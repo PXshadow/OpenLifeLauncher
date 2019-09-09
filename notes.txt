@@ -1,0 +1,4 @@
+skipFPSMeasure 1
+autoLogin 1
+
+auto

@@ -1,0 +1,8 @@
+hour count
+server browser
+download server and modded client indpendently
+input login info
+run selected client
+minimize application when playing onehouronelife when program ends have launcher show back up
+
+-future
