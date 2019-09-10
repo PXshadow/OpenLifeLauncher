@@ -1,5 +1,6 @@
 package;
 
+import lime.app.Future;
 import data.Reflector;
 import haxe.Timer;
 import openfl.net.URLRequest;
@@ -245,14 +246,13 @@ class Main extends Sprite
                 return;
             }
             //installer
-            stage.frameRate = 1;
-            desc.visible = false;
             visible = false;
+            //desc.visible = false;
             loader.get(server.data,true);
             var i:Int = 0;
             loader.progrsss = function(current:Float,total:Float)
             {
-                if (i++ > 100)
+                if (i++ > 20)
                 {
                     trace(current + "/" + total);
                     i = 0;
@@ -260,13 +260,13 @@ class Main extends Sprite
             }
             loader.complete = function(data:ByteArray)
             {
+                visible = true;
+                trace("finish " + data.length);
                 FileSystem.createDirectory(path);
                 unzip(haxe.zip.Reader.readZip(new BytesInput(data)),path);
                 serverFunction(servers.index);
                 //63426486
                 //70000000
-                stage.frameRate = 30;
-                desc.visible = true;
             }
             loader.error = function()
             {
@@ -358,20 +358,28 @@ class Main extends Sprite
     }
     private function deleteDir(path:String)
     {
-        if (FileSystem.exists(path) && FileSystem.isDirectory(path))
+        var future = new Future(function()
         {
-            for (name in FileSystem.readDirectory(path))
+            if (FileSystem.exists(path) && FileSystem.isDirectory(path))
             {
-                if (FileSystem.isDirectory(path + "/" + name))
+                for (name in FileSystem.readDirectory(path))
                 {
-                    deleteDir(path + "/" + name);
-                }else{
-                    FileSystem.deleteFile(path + "/" + name);
+                    if (FileSystem.isDirectory(path + "/" + name))
+                    {
+                        deleteDir(path + "/" + name);
+                    }else{
+                        FileSystem.deleteFile(path + "/" + name);
+                    }
                 }
             }
-        }
-        //finished deleting everything within the path, now delete the folder
-        if (FileSystem.exists(path)) FileSystem.deleteDirectory(path);
+            return 0;
+        },true);
+
+        future.onComplete(function(i:Int)
+        {
+            //finished deleting everything within the path, now delete the folder
+            if (FileSystem.exists(path)) FileSystem.deleteDirectory(path);
+        });
     }
     public function removeClientLib(path:String)
     {

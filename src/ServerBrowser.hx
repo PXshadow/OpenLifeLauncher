@@ -62,6 +62,7 @@ class ServerBrowser extends Sprite
     }
     private function click(_)
     {
+        index = i;
         setIndex(true);
     }
     var i:Int = 0;
@@ -76,9 +77,8 @@ class ServerBrowser extends Sprite
     {
         if (clickBool)
         {
-            index = i;
             select.visible = true;
-            select.y = (i + 1) * (18 + 4 + 1) - 18/2 - 1;
+            select.y = (index + 1) * (18 + 4 + 1) - 18/2 - 1;
         }else{
             over.visible = true;
             over.y = (i + 1) * (18 + 4 + 1);
@@ -101,7 +101,6 @@ class ServerBrowser extends Sprite
             address.appendText(reflect.ip.substring(0,reflect.ip.indexOf(".")) + "\n");
             status.appendText(reflect.status + "\n");
         }
-        trace("index " + index);
         setIndex(false);
         setIndex(true);
     }

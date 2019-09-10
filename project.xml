@@ -5,7 +5,6 @@
 	<app main="Main" path="bin" file="OpenLifeLauncher" />
 	<window width="1200" height="800" fps="30" antialiasing="4"/>
 	<source path="src" />
-	<haxelib name="svg"/>
 	<haxelib name="openfl" />
 	<assets path="assets"/>
 	<assets embed="true" if="final"/>
