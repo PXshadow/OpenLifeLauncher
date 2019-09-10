@@ -102,7 +102,7 @@ class Main extends Sprite
         desc.spacing = 20;
         desc.wordWrap = true;
         desc.cacheAsBitmap = false;
-        desc.height = 340;
+        desc.height = 326;
         desc.x = 300 + 20;
         desc.y = 10;
         addChild(desc);
@@ -117,8 +117,7 @@ class Main extends Sprite
         discord.Click = discordInvite;
         addChild(discord);
         serverbrowser = new ServerBrowser();
-        serverbrowser.y = desc.y + desc.height + 20;
-        serverbrowser.x = desc.x;
+        serverbrowser.y = desc.y + desc.height + 8;
         addChild(serverbrowser);
         //event
         stage.addEventListener(Event.RESIZE,resize);
@@ -426,9 +425,10 @@ class Main extends Sprite
         //action button
         action.x = -100 + (setWidth + action.width)/2;
         action.y = stage.stageHeight/scale - 40 - 20;
-
         delete.x = action.x + action.width + 10;
         delete.y = action.y;
+
+        serverbrowser.x = action.x + action.width/2  - 90;
         /*graphics.clear();
         graphics.lineStyle(2,0xFFFFFFF);
         var cx:Float = 200 + (setWidth - 200)/2;
