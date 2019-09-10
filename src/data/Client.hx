@@ -6,5 +6,6 @@ typedef Client =
     windows:Int,
     mac:Int,
     linux:Int,
-    desc:String
+    desc:String,
+    compressed:Bool
 } 

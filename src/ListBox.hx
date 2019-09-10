@@ -68,7 +68,6 @@ class ListBox extends Sprite
     private function click(_)
     {
         index = Math.floor((mouseY - 40)/40);
-        trace("index " + index);
         if (index < 0) return;
         redraw();
         //event

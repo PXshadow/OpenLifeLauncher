@@ -3,5 +3,6 @@
     "windows":1,
     "mac":-1,
     "linux":0,
-    "desc":"A modified version of OneLife."
+    "desc":"A modified version of OneLife.",
+    "compressed":false
 }

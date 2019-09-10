@@ -81,7 +81,6 @@ class Text extends TextField
         wordWrap = false;
         multiline = true;
         updateFormat();
-
     }
     private function updateFormat()
     {
@@ -93,7 +92,7 @@ class Text extends TextField
     }
     override function invalidate() 
     {
-        setTextFormat(format(),0,text.length);
+        setTextFormat(format(),0,length);
         super.invalidate();
     }
 }

@@ -6,10 +6,8 @@
 	<window width="1200" height="800" fps="30" antialiasing="4"/>
 	<source path="src" />
 	<haxelib name="openfl" />
-	<haxelib name="svg"/>
-	<haxelib name="htmlparser"/>
-	<assets path="assets" embed="true"/>
-
+	<assets path="assets"/>
+	<assets embed="true" if="final"/>
 	<icon path="icon.svg"/>
 	
 </project>
