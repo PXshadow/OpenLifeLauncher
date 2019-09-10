@@ -3,7 +3,7 @@
     "windows":0,
     "mac":2,
     "linux":1,
-    "desc":"A lightly modified client for One Hour One Life, a cross-platform and open-source multiplayer survival game of parenting and civilization building by Jason Rohrer.",
+    "desc":"• Fov scale\n• Zoom-in magnifier\n• Lineage fertility pannel\n• Age display\n• Name generator\n• Easy chat",
     "compressed":true
 
 }

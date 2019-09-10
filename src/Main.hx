@@ -1,5 +1,12 @@
 package;
 
+import data.Reflector;
+import haxe.Timer;
+import openfl.net.URLRequest;
+import openfl.display.PixelSnapping;
+import sys.thread.Thread;
+import lime.system.ThreadPool;
+import sys.io.FileOutput;
 import openfl.utils.ByteArray;
 import openfl.display.Bitmap;
 import openfl.display.BitmapData;
@@ -28,11 +35,14 @@ class Main extends Sprite
     var servers:ListBox;
     var clients:ListBox;
     var desc:Text;
+    var discord:Button;
+    var serverbrowser:ServerBrowser;
     var loader:Loader = new Loader();
+    var timer:Timer;
 	public function new()
 	{
 		super();
-        stage.color = Style.background;
+        stage.color = Style.dark;
         setupDir();
         //folders
         if (!FileSystem.exists(dir + "clients")) FileSystem.createDirectory(dir + "clients");
@@ -88,17 +98,79 @@ class Main extends Sprite
         delete.Click = remove;
         addChild(delete);
         //main
-        desc = new Text("",LEFT,20,0xFFFFFF,200);
+        desc = new Text("",LEFT,20,0xFFFFFF,setWidth - 300 - 20 * 2);
+        desc.spacing = 20;
         desc.wordWrap = true;
         desc.cacheAsBitmap = false;
-        desc.height = 200;
-        desc.x = 300 + 10;
+        desc.height = 340;
+        desc.x = 300 + 20;
         desc.y = 10;
         addChild(desc);
+        //discord invite area
+        discord = new Button();
+        discord.visible = false;
+        discord.addChild(new Bitmap(Assets.getBitmapData("assets/discord.png"),PixelSnapping.ALWAYS,true));
+        discord.scaleX = 0.3;
+        discord.scaleY = 0.3;
+        discord.x = setWidth - discord.width - 20;
+        discord.y = desc.height + 10 + 20;
+        discord.Click = discordInvite;
+        addChild(discord);
+        serverbrowser = new ServerBrowser();
+        serverbrowser.y = desc.y + desc.height + 20;
+        serverbrowser.x = desc.x;
+        addChild(serverbrowser);
         //event
         stage.addEventListener(Event.RESIZE,resize);
         resize(null);
+
+        timer = new haxe.Timer(1000 * 6);
+        timer.run = update;
 	}
+    private function update()
+    {
+        //update serverbrowser
+        if (servers.index >= 0)
+        {
+            loader.get(data.servers[servers.index].data.reflector,false);
+            loader.complete = function(string:String)
+            {
+                reflect(string);
+                timer.run = update;
+            }
+            loader.error = function()
+            {
+                trace("server error");
+                timer.run = update;
+            }
+            timer.run = function(){};
+        }
+    }
+    private function reflect(string:String)
+    {
+        string = string.substring("Remote servers:<br><br>|--> ".length,string.length);
+        var index:Int = 0;
+        var array:Array<data.Reflector> = [];
+        var reflector:Reflector = {ip: "",port: 0,status: ""};
+        while(true)
+        {
+            index = string.indexOf(" : ");
+            if (index < 0) break;
+            reflector.ip = string.substring(0,index);
+            reflector.port = Std.parseInt(string.substring(index + 3,index = string.indexOf(" ::: ",index)));
+            reflector.status = string.substring(index + 5,index = string.indexOf("<br><br>"));
+            array.push(Reflect.copy(reflector));
+            if (string.substring(index,index + 8 + 5) == "<br><br>|--> ")
+            {
+                //trim off
+                string = string.substring(index + 8 + 5,string.length);
+            }else{
+                //end
+                break;
+            }
+        }
+        serverbrowser.set(array);
+    }
     private function serverFunction(i:Int)
     {
         //redraw other
@@ -114,7 +186,11 @@ class Main extends Sprite
             //does not exist
             action.type = 0;
         }
+        delete.visible = action.type == 1 ? true : false;
         desc.text = data.servers[i].data.desc;
+        discord.visible = true;
+        serverbrowser.clear();
+        update();
     }
     private function clientFunction(i:Int)
     {
@@ -133,6 +209,15 @@ class Main extends Sprite
         }
         delete.visible = action.type == 1 ? true : false;
         desc.text = data.clients[i].data.desc;
+        discord.visible = false;
+        serverbrowser.clear();
+    }
+    private function discordInvite(_)
+    {
+        if (servers.index >= 0)
+        {
+            url(data.servers[servers.index].data.discord);
+        }
     }
     private function remove(_)
     {
@@ -161,16 +246,28 @@ class Main extends Sprite
                 return;
             }
             //installer
+            stage.frameRate = 1;
+            desc.visible = false;
+            visible = false;
             loader.get(server.data,true);
+            var i:Int = 0;
             loader.progrsss = function(current:Float,total:Float)
             {
-                trace(current + "/" + total);
+                if (i++ > 100)
+                {
+                    trace(current + "/" + total);
+                    i = 0;
+                }
             }
             loader.complete = function(data:ByteArray)
             {
                 FileSystem.createDirectory(path);
                 unzip(haxe.zip.Reader.readZip(new BytesInput(data)),path);
                 serverFunction(servers.index);
+                //63426486
+                //70000000
+                stage.frameRate = 30;
+                desc.visible = true;
             }
             loader.error = function()
             {
@@ -275,7 +372,7 @@ class Main extends Sprite
             }
         }
         //finished deleting everything within the path, now delete the folder
-        FileSystem.deleteDirectory(path);
+        if (FileSystem.exists(path)) FileSystem.deleteDirectory(path);
     }
     public function removeClientLib(path:String)
     {
@@ -296,7 +393,11 @@ class Main extends Sprite
             }
         }
     }
-    public static function execute(url:String):Void 
+    private function url(url:String)
+    {
+        openfl.Lib.navigateToURL(new URLRequest(url));
+    }
+    private function execute(url:String):Void 
     {
         switch (Sys.systemName()) 
         {
@@ -324,7 +425,7 @@ class Main extends Sprite
         side.x = diff;
         //action button
         action.x = -100 + (setWidth + action.width)/2;
-        action.y = stage.stageHeight/scale - 40 - 10;
+        action.y = stage.stageHeight/scale - 40 - 20;
 
         delete.x = action.x + action.width + 10;
         delete.y = action.y;
@@ -337,23 +438,25 @@ class Main extends Sprite
     private function unzip(list:List<haxe.zip.Entry>,path:String)
     {
         //unzip(haxe.zip.Reader.readZip(new BytesInput(loader.data)),path);
-        var ext:String = "";
+        Thread.create(function()
+        {
         path += "/";
         var i:Int = 0;
+        var file:FileOutput = null;
         for (items in list)
         {
             items.fileName = items.fileName.substring(items.fileName.indexOf("/") + 1,items.fileName.length);
-            ext = Path.extension(items.fileName);
-            if(ext == "")
+            if(Path.extension(items.fileName) == "")
             {
                 //folder
                 FileSystem.createDirectory(path + items.fileName);
             }else{
                 if (FileSystem.isDirectory(path + Path.directory(items.fileName)))
                 {
-                    var file = File.write(path + items.fileName);
+                    file = File.write(path + items.fileName);
                     file.write(haxe.zip.Reader.unzip(items));
                     file.close();
+                    file = null;
                 }else{
                     trace("Can not find directory " + Path.directory(items.fileName));
                 }
@@ -362,11 +465,11 @@ class Main extends Sprite
             if (i > 30) 
             {
                 i = 0;
-                Sys.sleep(0.008);
+                Sys.sleep(0.018);
                 trace("sleep");
             }
         }
-        //if (complete != null) complete(true);
+        });
     }
 	private function setupDir()
     {

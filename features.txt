@@ -5,4 +5,7 @@ input login info
 run selected client
 minimize application when playing onehouronelife when program ends have launcher show back up
 
+desc:
+A custom build launcher that allows you to configure your clients, texture packs and servers for OHOL - thanks Tipy
+
 -future

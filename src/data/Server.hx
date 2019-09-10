@@ -5,5 +5,7 @@ typedef Server =
     reflector:String,
     data:String,
     account:String,
-    desc:String
+    desc:String,
+    tech:String,
+    discord:String
 }
