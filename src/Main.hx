@@ -39,10 +39,14 @@ class Main extends Sprite
     var serverbrowser:ServerBrowser;
     var loader:Loader = new Loader();
     var timer:Timer;
-    public static var future:Future<Int> = null;
 	public function new()
 	{
 		super();
+        //resolve loader
+        /*loader.get("https://github.com/PXshadow/resolve/archive/master.zip",false,function(data:Bytes)
+        {
+            trace("warm up resolve");
+        });*/
         stage.color = Style.dark;
         setupDir();
         //folders
@@ -124,37 +128,33 @@ class Main extends Sprite
         stage.addEventListener(Event.RESIZE,resize);
         resize(null);
 
-        timer = new haxe.Timer(1000 * 6);
+        timer = new haxe.Timer(1000 * 10);
         timer.run = update;
 	}
     private function update()
     {
         //update serverbrowser
-        /*if (servers.index >= 0)
+        if (servers.index >= 0)
         {
-            loader.complete = function(bytes:Bytes)
+            loader.get(data.servers[servers.index].data.reflector,false,function(bytes:Bytes)
             {
-                trace("load");
+                if (bytes == null || bytes.length <= 0)
+                {
+                    timer.run = update;
+                    return;
+                }
                 reflect(bytes.toString());
-                trace("reflect finish");
                 timer.run = update;
-            }
-            loader.error = function()
-            {
-                timer.run = update;
-            }
-            loader.get(data.servers[servers.index].data.reflector,false);
+            });
             timer.run = function(){};
-        }*/
+        }
     }
     private function reflect(string:String)
     {
-        trace("inital " + string.length);
         string = string.substring("Remote servers:<br><br>|--> ".length,string.length);
         var index:Int = 0;
         var array:Array<data.Reflector> = [];
         var reflector:Reflector = {ip: "",port: 0,status: ""};
-        trace("0");
         while(true)
         {
             index = string.indexOf(" : ");
@@ -172,7 +172,6 @@ class Main extends Sprite
                 break;
             }
         }
-        trace("1 " + array.length);
         serverbrowser.set(array);
     }
     private function serverFunction(i:Int)
@@ -182,15 +181,20 @@ class Main extends Sprite
         clients.redraw();
         //data
         var obj = data.servers[i];
-        if (FileSystem.exists(dir + "servers/" + obj.name))
+        if (FileSystem.exists(dir + "servers/" + obj.name + "/done"))
         {
             //folder
-            action.type = 1;
+            if (clients.focus > -1)
+            {
+                action.type = NOCLIENT;
+            }else{
+                action.type = PLAY;
+            }
         }else{
             //does not exist
-            action.type = 0;
+            action.type = DOWNLOAD;
         }
-        delete.visible = action.type == 1 ? true : false;
+        delete.visible = action.type == DOWNLOAD ? false : true;
         desc.text = data.servers[i].data.desc;
         discord.visible = true;
         serverbrowser.clear();
@@ -202,16 +206,13 @@ class Main extends Sprite
         servers.index = -1;
         servers.redraw();
         //data
-        var obj = data.clients[i];
-        if (FileSystem.exists(dir + "clients/" + obj.name))
+        if (clients.focus == i)
         {
-            //folder
-            action.type = 1;
+            action.type = UNSELECT;
         }else{
-            //does not exist
-            action.type = 0;
+            action.type = SELECT;
         }
-        delete.visible = action.type == 1 ? true : false;
+        delete.visible = false;
         desc.text = data.clients[i].data.desc;
         discord.visible = false;
         serverbrowser.clear();
@@ -225,33 +226,22 @@ class Main extends Sprite
     }
     private function remove(_)
     {
-        if (future != null) return;
         if (servers.index >= 0)
         {
-            future = new Future(function()
-            {
-                deleteDir(dir + "servers/" + data.servers[servers.index].name);
-                return 0;
-            },true).onComplete(function(i:Int)
-            {
-                FileSystem.deleteDirectory(dir + "servers/" + data.servers[servers.index].name);
-                serverFunction(servers.index);
-                future = null;
-            });
+            trace("delete dir");
+            var path:String = dir + "servers/" + data.servers[servers.index].name;
+            deleteDir(path);
+            FileSystem.deleteDirectory(path);
+            serverFunction(servers.index);
+            trace("finish");
             return;
         }
         if (clients.index >= 0)
         {
-            future = new Future(function()
-            {
-                deleteDir(dir + "clients/" + data.clients[clients.index].name);
-                return 0;
-            },true).onComplete(function(i:Int)
-            {
-                FileSystem.deleteDirectory(dir + "servers/" + data.clients[clients.index].name);
-                clientFunction(clients.index);
-                future = null;
-            });
+            var path:String = dir + "clients/" + data.clients[clients.index].name;
+            deleteDir(path);
+            FileSystem.deleteDirectory(path);
+            clientFunction(clients.index);
         }
     }
     private function actionFunction(_)
@@ -261,24 +251,29 @@ class Main extends Sprite
             var name:String = data.servers[servers.index].name;
             var server = data.servers[servers.index].data;
             var path:String = dir + "servers/" + name + "/";
-            if (FileSystem.exists(path))
+            if (FileSystem.exists(path + "done"))
             {
                 //already exists
 
                 return;
+            }else{
+                deleteDir(path);
             }
             //installer
-            loader.complete = function(data:Bytes)
+            UnitTest.inital();
+            loader.get(server.data,true,function(data:Bytes)
             {
-                trace("stamp: " + UnitTest.stamp());
-                //FileSystem.createDirectory(path);
-                //unzip(haxe.zip.Reader.readZip(new BytesInput(data)),path);
-                //serverFunction(servers.index);
+                if (data == null) throw "loader data null";
+                trace("stamp: " + UnitTest.stamp() + " data length " + data.length);
+                FileSystem.createDirectory(path);
                 //63426486
                 //70000000
-            }
-            UnitTest.inital();
-            loader.get(server.data,true);
+                unzip(haxe.zip.Reader.readZip(new BytesInput(data)),path,function()
+                {
+                    File.write(path + "done").close();
+                    serverFunction(servers.index);
+                });
+            });
             return;
         }
         trace("clients " + clients.index);
@@ -288,7 +283,7 @@ class Main extends Sprite
             var name:String = data.clients[clients.index].name;
             var client = data.clients[clients.index].data;
             var path:String = dir + "clients/" + name + "/";
-            if (FileSystem.exists(path))
+            if (FileSystem.exists(path + "done"))
             {
                 for (name in FileSystem.readDirectory(path))
                 {
@@ -299,16 +294,13 @@ class Main extends Sprite
                     }
                 }
                 return;
+            }else{
+                //clean corrupted folder
+                deleteDir(path);
             }
             //installer
-            loader.complete = function(bytes:Bytes)
+            loader.get(client.url,false,function(bytes:Bytes)
             {
-                var data = bytes.toString();
-                data = data.substring(Std.int(72886/4),data.length);
-                var find = "d-flex flex-justify-between flex-items-center py-1 py-md-2 Box-body px-2";
-                data = data.substring(data.indexOf(find) + find.length,data.length);
-                var href = '<a href="';
-                var index:Int = 0;
                 var count:Int = 0;
                 #if windows
                 count = client.windows;
@@ -317,52 +309,48 @@ class Main extends Sprite
                 #elseif linux
                 count = client.linux;
                 #end
-                //count = 2;
-                var downloadLink:String = "";
-                for (i in 0...count + 1)
-                {
-                    index = data.indexOf(href,index) + href.length;
-                    downloadLink = data.substring(index,data.indexOf('"',index));
-                }
-                downloadLink = "https://github.com" + downloadLink;
-                loader.progress = function(current:Float,total:Float)
-                {
-                    trace(current + "/" + total);
-                }
-                loader.complete = function(data:Bytes)
+                loader.get(downloadLink(bytes.toString(),count),true,function(data:Bytes)
                 {
                     trace("unzip");
                     FileSystem.createDirectory(path);
                     if (client.compressed)
                     {
-                        unzip(haxe.zip.Reader.readZip(new BytesInput(data)), path);
+                        unzip(haxe.zip.Reader.readZip(new BytesInput(data)), path,function()
+                        {
+                            clientlib(path);
+                        });
                     }else{
                         var app = File.write(path + name + ".exe");
                         app.write(data);
                         app.close();
+                        clientlib(path);
                     }
-                    //extract client lib
-                    unzip(haxe.zip.Reader.readZip(new BytesInput(Assets.getBytes("assets/clientlib.zip"))),path);
-                    trace("finish");
-                    clientFunction(action.type);
-                }
-                loader.get(downloadLink,true);
-            }
-            loader.error = function()
-            {
-                trace("error");
-            }
-            loader.get(client.url,false);
-            #if windows
-
-            #end
-            #if mac
-
-            #end
-            #if linux
-
-            #end
+                });
+            });
         }
+    }
+    private function clientlib(path:String)
+    {
+        unzip(haxe.zip.Reader.readZip(new BytesInput(Assets.getBytes("assets/clientlib.zip"))),path,function()
+        {
+            File.write(path + "done").close();
+            clientFunction(clients.index);
+        });
+    }
+    private function downloadLink(data:String,count:Int):String
+    {
+        data = data.substring(Std.int(72886/4),data.length);
+        var find = "d-flex flex-justify-between flex-items-center py-1 py-md-2 Box-body px-2";
+        data = data.substring(data.indexOf(find) + find.length,data.length);
+        var href = '<a href="';
+        var index:Int = 0;
+        var downloadLink:String = "";
+        for (i in 0...count + 1)
+        {
+            index = data.indexOf(href,index) + href.length;
+            downloadLink = data.substring(index,data.indexOf('"',index));
+        }
+        return "https://github.com" + downloadLink;
     }
     private function deleteDir(path:String)
     {
@@ -373,6 +361,7 @@ class Main extends Sprite
                 if (FileSystem.isDirectory(path + "/" + name))
                 {
                     deleteDir(path + "/" + name);
+                    FileSystem.deleteDirectory(path + "/" + name);
                 }else{
                     FileSystem.deleteFile(path + "/" + name);
                 }
@@ -441,10 +430,10 @@ class Main extends Sprite
         graphics.moveTo(cx,0);
         graphics.lineTo(cx,setHeight);*/
     }
-    private function unzip(list:List<haxe.zip.Entry>,path:String)
+    private function unzip(list:List<haxe.zip.Entry>,path:String,finish:Void->Void)
     {
-        //unzip(haxe.zip.Reader.readZip(new BytesInput(loader.data)),path);
-        future = new Future(function()
+        trace("zip " + list.length + " items");
+        var future = new Future(function()
         {
             path += "/";
             var file:FileOutput = null;
@@ -470,7 +459,8 @@ class Main extends Sprite
             return 0;
         },true).onComplete(function(i:Int)
         {
-            future = null;
+            finish();
+            trace("finish zip");
         });
     }
 	private function setupDir()

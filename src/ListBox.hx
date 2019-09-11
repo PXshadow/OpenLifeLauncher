@@ -9,6 +9,7 @@ class ListBox extends Sprite
 {
     public var select:Int->Void;
     public var index:Int = -1;
+    public var focus:Int = -1;
     var length:Int = 0;
     var i:Int = 0;
     var title:String = "";
@@ -25,6 +26,7 @@ class ListBox extends Sprite
         text.x = 0;
         text.y = 4;
         addChild(text);
+        //events
         addEventListener(MouseEvent.CLICK,click);
         addEventListener(MouseEvent.MOUSE_MOVE,move);
     }
@@ -79,6 +81,13 @@ class ListBox extends Sprite
         tab();
         i = 0;
         for (j in 0...length)  draw();
+        //focus
+        if (focus > -1)
+        {
+            graphics.endFill();
+            graphics.beginFill(0xFFFFFF);
+            graphics.drawCircle(300 - 20,focus * 40 + 20,8);
+        }
     }
     public function fill()
     {
