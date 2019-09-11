@@ -132,7 +132,6 @@ class Main extends Sprite
         //update serverbrowser
         if (servers.index >= 0)
         {
-            loader.get(data.servers[servers.index].data.reflector,false);
             loader.complete = function(string:String)
             {
                 reflect(string);
@@ -143,6 +142,7 @@ class Main extends Sprite
                 trace("server error");
                 timer.run = update;
             }
+            loader.get(data.servers[servers.index].data.reflector,false);
             timer.run = function(){};
         }
     }
@@ -248,7 +248,6 @@ class Main extends Sprite
             //installer
             visible = false;
             //desc.visible = false;
-            loader.get(server.data,true);
             var i:Int = 0;
             loader.progrsss = function(current:Float,total:Float)
             {
@@ -272,6 +271,7 @@ class Main extends Sprite
             {
 
             }
+            loader.get(server.data,true);
             return;
         }
         trace("clients " + clients.index);
@@ -294,7 +294,6 @@ class Main extends Sprite
                 return;
             }
             //installer
-            loader.get(client.url,false);
             loader.complete = function(data:String)
             {
                 data = data.substring(Std.int(72886/4),data.length);
@@ -318,7 +317,6 @@ class Main extends Sprite
                     downloadLink = data.substring(index,data.indexOf('"',index));
                 }
                 downloadLink = "https://github.com" + downloadLink;
-                loader.get(downloadLink,true);
                 loader.progrsss = function(current:Float,total:Float)
                 {
                     trace(current + "/" + total);
@@ -340,11 +338,13 @@ class Main extends Sprite
                     trace("finish");
                     clientFunction(action.type);
                 }
+                loader.get(downloadLink,true);
             }
             loader.error = function()
             {
                 trace("error");
             }
+            loader.get(client.url,false);
             #if windows
 
             #end
