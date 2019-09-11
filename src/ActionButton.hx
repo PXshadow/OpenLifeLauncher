@@ -6,7 +6,8 @@ enum ActionType
     PLAY;
     UPDATE;
     NOCLIENT;
-    
+    CLEAN;
+
     SELECT;
     UNSELECT;
 }
@@ -42,6 +43,9 @@ class ActionButton extends Button
             fill(0x2196f3);
             case NOCLIENT:
             text = "No Client";
+            fill(0x2196f3);
+            case CLEAN:
+            text = "Clean";
             fill(0x2196f3);
         }
         return type;

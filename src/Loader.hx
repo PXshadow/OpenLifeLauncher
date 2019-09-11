@@ -9,6 +9,7 @@ import lime.app.Future;
 class Loader
 {
     var curlBool:Bool = true;
+    public var active:Array<CURL> = [];
     public function new()
     {
 
@@ -40,12 +41,14 @@ class Loader
                 bytes = output;
                 return bytes.length;
             });
+            active.push(curl);
             var future = new Future(function()
             {
                 curl.perform();
                 return 0;
             },true).onComplete(function(i:Int)
             {
+                active.remove(curl);
                 if (complete != null) complete(bytes);
                 bytes = null;
             });

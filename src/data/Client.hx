@@ -7,5 +7,4 @@ typedef Client =
     mac:Int,
     linux:Int,
     desc:String,
-    compressed:Bool
 } 

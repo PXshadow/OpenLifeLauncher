@@ -86,7 +86,7 @@ class ListBox extends Sprite
         {
             graphics.endFill();
             graphics.beginFill(0xFFFFFF);
-            graphics.drawCircle(300 - 20,focus * 40 + 20,8);
+            graphics.drawCircle(300 - 20,40 + focus * 40 + 20,8);
         }
     }
     public function fill()

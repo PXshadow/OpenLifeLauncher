@@ -181,20 +181,26 @@ class Main extends Sprite
         clients.redraw();
         //data
         var obj = data.servers[i];
-        if (FileSystem.exists(dir + "servers/" + obj.name + "/done"))
+        if (FileSystem.exists(dir + "servers/" + obj.name))
         {
-            //folder
-            if (clients.focus > -1)
+            if (!FileSystem.exists(dir + "servers/" + obj.name + "/done"))
             {
-                action.type = NOCLIENT;
+                //folder is there but files are still there 
+                action.type = CLEAN;
             }else{
-                action.type = PLAY;
+                //folder
+                if (clients.focus > -1)
+                {
+                    action.type = NOCLIENT;
+                }else{
+                    action.type = PLAY;
+                }
             }
         }else{
             //does not exist
             action.type = DOWNLOAD;
         }
-        delete.visible = action.type == DOWNLOAD ? false : true;
+        delete.visible = (action.type == DOWNLOAD || action.type == CLEAN ? false : true);
         desc.text = data.servers[i].data.desc;
         discord.visible = true;
         serverbrowser.clear();
@@ -212,7 +218,7 @@ class Main extends Sprite
         }else{
             action.type = SELECT;
         }
-        delete.visible = false;
+        delete.visible = FileSystem.exists(dir + "clients/" + data.clients[i].name);
         desc.text = data.clients[i].data.desc;
         discord.visible = false;
         serverbrowser.clear();
@@ -246,7 +252,98 @@ class Main extends Sprite
     }
     private function actionFunction(_)
     {
-        if (servers.index >= 0)
+        //data
+        var index:Int = 0;
+        var fill:String = "";
+        if (servers.index > -1)
+        {
+            index = servers.index;
+            fill = "servers/";
+        }else{
+            index = clients.index;
+            fill = "clients/";
+        }
+        var path:String = dir + fill + data.servers[index].name + "/"; 
+        //action types
+        switch(action.type)
+        {
+            //server side
+            case DOWNLOAD:
+            UnitTest.inital();
+            loader.get(data.servers[index].data.data,true,function(data:Bytes)
+            {
+                trace("stamp: " + UnitTest.stamp());
+                FileSystem.createDirectory(path);
+                unzip(haxe.zip.Reader.readZip(new BytesInput(data)),path,function()
+                {
+                    File.write(path + "done").close();
+                    finish();
+                });
+            });
+            case PLAY:
+            //use focused client add into server folder and play
+            case CLEAN:
+            trace("clean: " + path);
+            deleteDir(path);
+            FileSystem.deleteDirectory(path);
+            finish();
+            case NOCLIENT:
+            clientFunction(0);
+            //client side
+            case SELECT:
+            if (FileSystem.exists(path + "done"))
+            {
+                clients.focus = index;
+                finish();
+                return;
+            }else{
+                //check if corrupted folder and delete since it's small
+                if (FileSystem.exists(path)) deleteDir(path);
+            }
+            //download
+            loader.get(data.clients[index].data.url,false,function(bytes:Bytes)
+            {
+                trace("url " + data.clients[index].data.url);
+                var count:Int = 0;
+                #if windows
+                count = data.clients[index].data.windows;
+                #elseif mac
+                count = data.clients[index].data.mac;
+                #elseif linux
+                count = data.clients[index].data.linux;
+                #end
+                var link = downloadLink(bytes.toString(),count);
+                loader.get(link,true,function(bytes:Bytes)
+                {
+                    FileSystem.createDirectory(path);
+                    var ext:String = Path.extension(link);
+                    switch (ext)
+                    {
+                        case "zip":
+                        unzip(haxe.zip.Reader.readZip(new BytesInput(bytes)), path,function()
+                        {
+                            clientlib(path);
+                            clients.focus = index;
+                            finish();
+                        });
+                        case "exe" | "" | ".app":
+                        //exe windows, "" is linux, app is osx
+                        var app = File.write(path + name + (ext == "" ? "" : "." + ext));
+                        app.write(bytes);
+                        app.close();
+                        clientlib(path);
+                        clients.focus = index;
+                        finish();
+                    }
+
+                });
+            });
+            case UNSELECT:
+            clients.focus = -1;
+            finish();
+            default:
+        }
+        /*if (servers.index >= 0)
         {
             var name:String = data.servers[servers.index].name;
             var server = data.servers[servers.index].data;
@@ -327,14 +424,26 @@ class Main extends Sprite
                     }
                 });
             });
+        }*/
+    }
+    private function finish()
+    {
+        if (servers.index >= 0)
+        {
+            serverFunction(servers.index);
+            return;
         }
+        if (clients.index >= 0)
+        {
+            clientFunction(clients.index);
+        }
+        trace("finish action");
     }
     private function clientlib(path:String)
     {
         unzip(haxe.zip.Reader.readZip(new BytesInput(Assets.getBytes("assets/clientlib.zip"))),path,function()
         {
             File.write(path + "done").close();
-            clientFunction(clients.index);
         });
     }
     private function downloadLink(data:String,count:Int):String
