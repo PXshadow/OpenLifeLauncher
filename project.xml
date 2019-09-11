@@ -6,6 +6,10 @@
 	<window width="1200" height="800" fps="30" antialiasing="4"/>
 	<source path="src" />
 	<haxelib name="openfl" />
+	<!--<haxedef name="HXCPP_STACK_LINE" if="debug"/>-->
+	<!--<haxedef name="HXCPP_STACK_TRACE" if="debug"/>-->
+	<haxedef name="HXCPP_GC_GENERATIONAL"/>
+	<haxedef name="HXCPP_GC_BIG_BLOCKS"/>
 	<assets path="assets"/>
 	<assets embed="true" if="final"/>
 	

@@ -4,3 +4,7 @@ auto
 
 HXCPP_GC_BIG_BLOCKS	Allow working memory greater than 1 Gig
 HXCPP_GC_MOVING	Allow garbage collector to move memory to reduce fragmentation
+
+
+71 no deflate
+68 deflate
