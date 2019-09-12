@@ -9,7 +9,8 @@ import lime.app.Future;
 class Loader
 {
     var curlBool:Bool = true;
-    public var active:Array<CURL> = [];
+    var curl:CURL = null;
+    var curlLoad:Bool = false;
     public function new()
     {
 
@@ -18,15 +19,33 @@ class Loader
     {
         if (curlBool)
         {
-            var curl = new CURL();
-            curl.reset();
+            if (application)
+            {
+                if (curlLoad) 
+                {
+                    openfl.Lib.current.stage.application.window.alert("CURL Application already running","Error");
+                    trace("CURL Application already running");
+                    return;
+                }
+                curlLoad = true;
+                if (this.curl == null)
+                {
+                    this.curl = new CURL();
+                }else{
+                    this.curl.reset();
+                }
+            }
+            var curl = application ? this.curl : new CURL();
+            //curl.setOption(INFILESIZE_LARGE,application);
             curl.setOption(URL,url);
             curl.setOption(HTTPGET,true);
+            //curl.setOption(INFILESIZE,60000000);
             curl.setOption(FOLLOWLOCATION,true);
             curl.setOption(AUTOREFERER,true);
             //curl.setOption(RESOLVE,true);
             var headers = ["Content-Type: " + Std.string(application ? "application/octet-stream" : "application/x-www-form-urlencoded")];
             curl.setOption(HTTPHEADER,headers);
+            //curl.setOption(TCP_NODELAY,true);
             //curl.setOption(PROGRESSFUNCTION,onProgress);
             curl.setOption(SSL_VERIFYPEER,false);
             curl.setOption(SSL_VERIFYHOST,0);
@@ -35,20 +54,20 @@ class Loader
             curl.setOption(ACCEPT_ENCODING,"DEFLATE");
             curl.setOption(TRANSFERTEXT,!application);
             //curl.setOption(VERBOSE,true);
+            curl.setOption(MAXREDIRS,20);
             var bytes:Bytes;
             curl.setOption(WRITEFUNCTION,function(curl:CURL,output:Bytes):Int
             {
                 bytes = output;
                 return bytes.length;
             });
-            active.push(curl);
             var future = new Future(function()
             {
                 curl.perform();
                 return 0;
             },true).onComplete(function(i:Int)
             {
-                active.remove(curl);
+                if (application) curlLoad = false;
                 if (complete != null) complete(bytes);
                 bytes = null;
             });

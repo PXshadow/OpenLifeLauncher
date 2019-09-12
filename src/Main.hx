@@ -1,5 +1,7 @@
 package;
 
+import lime.system.BackgroundWorker;
+import lime.system.ThreadPool;
 import haxe.io.Bytes;
 import lime.app.Future;
 import data.Reflector;
@@ -39,14 +41,15 @@ class Main extends Sprite
     var serverbrowser:ServerBrowser;
     var loader:Loader = new Loader();
     var timer:Timer;
+    var unzipLength:Int = 0;
 	public function new()
 	{
 		super();
         //resolve loader
-        /*loader.get("https://github.com/PXshadow/resolve/archive/master.zip",false,function(data:Bytes)
+        loader.get("https://github.com/PXshadow/resolve/archive/master.zip",true,function(data:Bytes)
         {
             trace("warm up resolve");
-        });*/
+        });
         stage.color = Style.dark;
         setupDir();
         //folders
@@ -189,7 +192,7 @@ class Main extends Sprite
                 action.type = CLEAN;
             }else{
                 //folder
-                if (clients.focus > -1)
+                if (clients.focus == -1)
                 {
                     action.type = NOCLIENT;
                 }else{
@@ -255,45 +258,70 @@ class Main extends Sprite
         //data
         var index:Int = 0;
         var fill:String = "";
+        var name:String = "";
         if (servers.index > -1)
         {
             index = servers.index;
             fill = "servers/";
+            name = data.servers[index].name;
         }else{
             index = clients.index;
             fill = "clients/";
+            name = data.clients[index].name;
         }
-        var path:String = dir + fill + data.servers[index].name + "/"; 
+        var path:String = dir + fill + name + "/"; 
         //action types
         switch(action.type)
         {
             //server side
             case DOWNLOAD:
             UnitTest.inital();
+            action.text = "Downloading";
             loader.get(data.servers[index].data.data,true,function(data:Bytes)
             {
                 trace("stamp: " + UnitTest.stamp());
                 FileSystem.createDirectory(path);
+                action.text = "unzip";
                 unzip(haxe.zip.Reader.readZip(new BytesInput(data)),path,function()
                 {
                     File.write(path + "done").close();
                     finish();
-                });
+                },true);
             });
             case PLAY:
             //use focused client add into server folder and play
+            action.text = "Setting up";
+            var name = FileSystem.readDirectory(dir + "clients/" + data.clients[clients.focus].name)[0];
+            var ext = Path.extension(name);
+            switch(ext)
+            {
+                case "zip":
+                //compressed
+                var input:haxe.io.Input = File.read(dir + "clients/" + data.clients[clients.focus].name);
+                unzip(haxe.zip.Reader.readZip(input),path,function()
+                {
+                    trace("finish unzip into server folder");
+                    clientlib(path,function()
+                    {
+                        trace("finish client lib");
+                    });
+                },true);
+                default:
+                //excutables
+            }
             case CLEAN:
             trace("clean: " + path);
             deleteDir(path);
             FileSystem.deleteDirectory(path);
             finish();
             case NOCLIENT:
-            clientFunction(0);
+            openfl.Lib.current.stage.window.alert("No client selected","Info");
             //client side
             case SELECT:
             if (FileSystem.exists(path + "done"))
             {
                 clients.focus = index;
+                clients.redraw();
                 finish();
                 return;
             }else{
@@ -313,29 +341,19 @@ class Main extends Sprite
                 count = data.clients[index].data.linux;
                 #end
                 var link = downloadLink(bytes.toString(),count);
+                trace("link " + link);
                 loader.get(link,true,function(bytes:Bytes)
                 {
                     FileSystem.createDirectory(path);
                     var ext:String = Path.extension(link);
-                    switch (ext)
-                    {
-                        case "zip":
-                        unzip(haxe.zip.Reader.readZip(new BytesInput(bytes)), path,function()
-                        {
-                            clientlib(path);
-                            clients.focus = index;
-                            finish();
-                        });
-                        case "exe" | "" | ".app":
-                        //exe windows, "" is linux, app is osx
-                        var app = File.write(path + name + (ext == "" ? "" : "." + ext));
-                        app.write(bytes);
-                        app.close();
-                        clientlib(path);
-                        clients.focus = index;
-                        finish();
-                    }
-
+                    //write an executable or a zip
+                    var app = File.write(path + name + (ext == "" ? "" : "." + ext));
+                    app.write(bytes);
+                    app.close();
+                    clients.focus = index;
+                    //done file to signal no issue happened on install
+                    File.write(path + "done").close();
+                    finish();
                 });
             });
             case UNSELECT:
@@ -343,88 +361,6 @@ class Main extends Sprite
             finish();
             default:
         }
-        /*if (servers.index >= 0)
-        {
-            var name:String = data.servers[servers.index].name;
-            var server = data.servers[servers.index].data;
-            var path:String = dir + "servers/" + name + "/";
-            if (FileSystem.exists(path + "done"))
-            {
-                //already exists
-
-                return;
-            }else{
-                deleteDir(path);
-            }
-            //installer
-            UnitTest.inital();
-            loader.get(server.data,true,function(data:Bytes)
-            {
-                if (data == null) throw "loader data null";
-                trace("stamp: " + UnitTest.stamp() + " data length " + data.length);
-                FileSystem.createDirectory(path);
-                //63426486
-                //70000000
-                unzip(haxe.zip.Reader.readZip(new BytesInput(data)),path,function()
-                {
-                    File.write(path + "done").close();
-                    serverFunction(servers.index);
-                });
-            });
-            return;
-        }
-        trace("clients " + clients.index);
-        if (clients.index >= 0)
-        {
-            trace("start loader");
-            var name:String = data.clients[clients.index].name;
-            var client = data.clients[clients.index].data;
-            var path:String = dir + "clients/" + name + "/";
-            if (FileSystem.exists(path + "done"))
-            {
-                for (name in FileSystem.readDirectory(path))
-                {
-                    switch(Path.extension(name))
-                    {
-                        case "exe":
-                        execute(path + name);
-                    }
-                }
-                return;
-            }else{
-                //clean corrupted folder
-                deleteDir(path);
-            }
-            //installer
-            loader.get(client.url,false,function(bytes:Bytes)
-            {
-                var count:Int = 0;
-                #if windows
-                count = client.windows;
-                #elseif mac
-                count = client.mac;
-                #elseif linux
-                count = client.linux;
-                #end
-                loader.get(downloadLink(bytes.toString(),count),true,function(data:Bytes)
-                {
-                    trace("unzip");
-                    FileSystem.createDirectory(path);
-                    if (client.compressed)
-                    {
-                        unzip(haxe.zip.Reader.readZip(new BytesInput(data)), path,function()
-                        {
-                            clientlib(path);
-                        });
-                    }else{
-                        var app = File.write(path + name + ".exe");
-                        app.write(data);
-                        app.close();
-                        clientlib(path);
-                    }
-                });
-            });
-        }*/
     }
     private function finish()
     {
@@ -439,7 +375,7 @@ class Main extends Sprite
         }
         trace("finish action");
     }
-    private function clientlib(path:String)
+    private function clientlib(path:String,finish:Void->Void)
     {
         unzip(haxe.zip.Reader.readZip(new BytesInput(Assets.getBytes("assets/clientlib.zip"))),path,function()
         {
@@ -449,7 +385,7 @@ class Main extends Sprite
     private function downloadLink(data:String,count:Int):String
     {
         data = data.substring(Std.int(72886/4),data.length);
-        var find = "d-flex flex-justify-between flex-items-center py-1 py-md-2 Box-body px-2";
+        var find = '<div class="d-flex flex-justify-between flex-items-center py-1 py-md-2 Box-body px-2">';
         data = data.substring(data.indexOf(find) + find.length,data.length);
         var href = '<a href="';
         var index:Int = 0;
@@ -477,7 +413,7 @@ class Main extends Sprite
             }
         }
     }
-    public function removeClientLib(path:String)
+    public function removeClient(path:String)
     {
         for (name in FileSystem.readDirectory(path))
         {
@@ -488,9 +424,7 @@ class Main extends Sprite
             }else{
                 switch (Path.extension(name))
                 {
-                    case "dll":
-                    FileSystem.deleteFile(path + name);
-                    case "exe":
+                    case "dll" | "exe" | ".app":
                     FileSystem.deleteFile(path + name);
                 }
             }
@@ -533,44 +467,47 @@ class Main extends Sprite
         delete.y = action.y;
 
         serverbrowser.x = action.x + action.width/2  - 90;
-        /*graphics.clear();
-        graphics.lineStyle(2,0xFFFFFFF);
-        var cx:Float = 200 + (setWidth - 200)/2;
-        graphics.moveTo(cx,0);
-        graphics.lineTo(cx,setHeight);*/
     }
-    private function unzip(list:List<haxe.zip.Entry>,path:String,finish:Void->Void)
+    private function unzip(list:List<haxe.zip.Entry>,path:String,finish:Void->Void,actionBool:Bool=false)
     {
-        trace("zip " + list.length + " items");
-        var future = new Future(function()
+        var length:Int = list.length;
+        var worker = new BackgroundWorker();
+        var file:File = null;
+        worker.doWork.add(function(list:List<haxe.zip.Entry>)
         {
-            path += "/";
-            var file:FileOutput = null;
-            for (items in list)
+            var i:Int = 0;
+            for (item in list)
             {
-                items.fileName = items.fileName.substring(items.fileName.indexOf("/") + 1,items.fileName.length);
-                if(Path.extension(items.fileName) == "")
+                i++;
+                item.fileName = item.fileName.substring(item.fileName.indexOf("/") + 1,item.fileName.length);
+                if(Path.extension(item.fileName) == "")
                 {
                     //folder
-                    FileSystem.createDirectory(path + items.fileName);
+                    FileSystem.createDirectory(path + item.fileName);
+                    worker.sendProgress(i);
                 }else{
-                    if (FileSystem.isDirectory(path + Path.directory(items.fileName)))
+                    if (FileSystem.isDirectory(path + Path.directory(item.fileName)))
                     {
-                        file = File.write(path + items.fileName);
-                        file.write(haxe.zip.Reader.unzip(items));
+                        file = File.write(path + item.fileName);
+                        file.write(haxe.zip.Reader.unzip(item));
                         file.close();
                         file = null;
                     }else{
-                        trace("Can not find directory " + Path.directory(items.fileName));
+                        trace("Can not find directory " + Path.directory(item.fileName));
                     }
                 }
             }
-            return 0;
-        },true).onComplete(function(i:Int)
+            worker.sendComplete();
+        });
+        worker.onProgress.add(function(current:Int)
+        {
+            if (actionBool) action.text = "unzip " + Std.string(Std.int((current/length) * 100)) + "%";
+        });
+        worker.onComplete.add(function(_)
         {
             finish();
-            trace("finish zip");
         });
+        worker.run(list);
     }
 	private function setupDir()
     {

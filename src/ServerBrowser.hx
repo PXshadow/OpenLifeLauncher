@@ -70,7 +70,7 @@ class ServerBrowser extends Sprite
     {
         i = Std.int((mouseY + 2)/(18 + 4 + 1));
         if (i < 0) i = 0;
-        if (i > address.numLines - 1) i = address.numLines - 1;
+        if (i > address.numLines - 2) i = address.numLines - 2;
         setIndex();
     }
     private function setIndex(clickBool:Bool=false)

@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <project>
 	
-	<meta title="OpenLifeLauncher" package="com.sample.OpenLifeLauncher" version="1.0.0" company="Company Name" />
-	<app main="Main" path="bin" file="OpenLifeLauncher" />
-	<window width="1200" height="800" fps="30" antialiasing="4"/>
+	<meta title="OpenLife" package="com.sample.OpenLife" version="1.0.0" company="Company Name" />
+	<app main="Main" path="bin" file="OpenLife" />
+	<window width="1200" height="800" fps="30" antialiasing="0"/>
 	<source path="src" />
 	<haxelib name="openfl" />
 	<!--<haxedef name="HXCPP_STACK_LINE" if="debug"/>-->
@@ -12,5 +12,5 @@
 	<!--<haxedef name="HXCPP_GC_BIG_BLOCKS"/>-->
 	<assets path="assets"/>
 	<assets embed="true" if="final"/>
-	
+	<icon path="icon.svg"/>
 </project>
