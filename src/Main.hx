@@ -297,7 +297,13 @@ class Main extends Sprite
                     trace("graphics lib");
                     graphicLib(path,function()
                     {
+                        //english text
+                        var language = File.write(path + "us_english_60.txt");
+                        language.writeString(Assets.getText("assets/us_english_60.txt"));
+                        language.close();
+                        //completion check file
                         File.write(path + "done").close();
+                        //finish event
                         finish();
                     });
                 },true);
@@ -309,6 +315,9 @@ class Main extends Sprite
             var fileName = FileSystem.readDirectory(dir + "clients/" + name)[0];
             var ext = Path.extension(fileName);
             var input:haxe.io.Input = File.read(dir + "clients/" + name + "/" + fileName);
+            //clean up old client
+            removeClient(path);
+            //install new client
             switch(ext)
             {
                 case "zip":
@@ -379,7 +388,7 @@ class Main extends Sprite
             clients.focus = -1;
             finish();
             case EXIT:
-            terminate()
+            terminate();
             default:
         }
     }
@@ -399,7 +408,7 @@ class Main extends Sprite
     private function graphicLib(path:String,finish:Void->Void)
     {
         FileSystem.createDirectory(path + "graphics");
-        unzip(haxe.zip.Reader.readZip(new BytesInput(Assets.getBytes("assets/graphics.zip"))),path + "graphics",function()
+        unzip(haxe.zip.Reader.readZip(new BytesInput(Assets.getBytes("assets/graphics.zip"))),path + "graphics/",function()
         {
             finish();
         });
@@ -466,18 +475,18 @@ class Main extends Sprite
             {
                 #if windows
                 case "exe":
-                execute(path + "/" + name);
+                execute(path,name);
                 return;
                 #elseif mac
                 case "app":
-                execute(path + "/" + name);
+                execute(path,name);
                 return;
                 #elseif linux
                 case "":
                 //file with no extension therefore it's a linux executable
-                if (!FileSystem.isDirectory(path + "/" + name))
+                if (!FileSystem.isDirectory(path + name))
                 {
-                    execute(path + "/" + name);
+                    execute(path,name);
                     return;
                 }
                 #end
@@ -496,7 +505,7 @@ class Main extends Sprite
             }else{
                 switch (Path.extension(name))
                 {
-                    case "dll" | "exe" | ".app":
+                    case "dll" | "exe" | "app" | "txt":
                     FileSystem.deleteFile(path + name);
                 }
             }
@@ -506,8 +515,10 @@ class Main extends Sprite
     {
         openfl.Lib.navigateToURL(new URLRequest(url));
     }
-    private function execute(url:String):Void 
+    private function execute(path:String,url:String):Void 
     {
+        Sys.setCwd(path);
+        trace("execute " + url);
         switch (Sys.systemName()) 
         {
             case "Linux", "BSD": Sys.command("xdg-open", [url]);
@@ -516,18 +527,19 @@ class Main extends Sprite
             default:
         }
     }
-    private function terminate():Void
+    private function terminate()
     {
+        if (task == "") return;
         switch(Sys.systemName())
         {
-            //case "Linux" | "BSD" : Sys.command(
+            case "Linux" | "BSD" | "Mac" : Sys.command("pkill",[Path.withoutExtension(task)]);
             //case "Mac":
-            case "Windows": Sys.command("TASKKILL",["/IM","notepad.exe");
+            case "Windows": Sys.command("TASKKILL",["/IM",task]);
         }
+        task = "";
     }
     private function resize(_)
     {
-        terminate();
         var tempX:Float = stage.stageWidth / setWidth;
         var tempY:Float = stage.stageHeight / setHeight;
         scale = Math.min(tempX,tempY);

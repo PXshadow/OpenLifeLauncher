@@ -12,5 +12,4 @@
 	<!--<haxedef name="HXCPP_GC_BIG_BLOCKS"/>-->
 	<assets path="assets"/>
 	<assets embed="true" if="final"/>
-	<icon path="icon.svg"/>
 </project>
