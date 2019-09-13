@@ -10,6 +10,7 @@ enum ActionType
 
     SELECT;
     UNSELECT;
+    EXIT;
 }
 class ActionButton extends Button
 {
@@ -47,6 +48,9 @@ class ActionButton extends Button
             case CLEAN:
             text = "Clean";
             fill(0x2196f3);
+            case EXIT:
+            text = "Exit";
+            fill(0x808080);
         }
         return type;
     }

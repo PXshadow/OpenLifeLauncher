@@ -43,6 +43,7 @@ class Main extends Sprite
     var loader:Loader = new Loader();
     var timer:Timer;
     var unzipLength:Int = 0;
+    var task:String = "";
 	public function new()
 	{
 		super();
@@ -293,8 +294,12 @@ class Main extends Sprite
                 action.text = "unzip";
                 unzip(haxe.zip.Reader.readZip(new BytesInput(data)),path,function()
                 {
-                    File.write(path + "done").close();
-                    finish();
+                    trace("graphics lib");
+                    graphicLib(path,function()
+                    {
+                        File.write(path + "done").close();
+                        finish();
+                    });
                 },true);
             });
             case PLAY:
@@ -312,6 +317,7 @@ class Main extends Sprite
                 {
                     unzip(haxe.zip.Reader.readZip(input),path,function()
                     {
+                        trace("run client");
                         runClient(path);
                     });
                 });
@@ -319,8 +325,8 @@ class Main extends Sprite
                 //excutables
                 clientlib(path,function()
                 {
-                    trace("finish client lib");
-                    var file = File.write(path + "/" + fileName);
+                    trace("finish client lib " + path + fileName);
+                    var file = File.write(path + fileName);
                     file.write(input.readAll());
                     file.close();
                     runClient(path);
@@ -335,15 +341,13 @@ class Main extends Sprite
             openfl.Lib.current.stage.window.alert("No client selected","Info");
             //client side
             case SELECT:
-            if (FileSystem.exists(path + "done"))
+            if (FileSystem.exists(path))
             {
+                //already installed
                 clients.focus = index;
                 clients.redraw();
                 finish();
                 return;
-            }else{
-                //check if corrupted folder and delete since it's small
-                if (FileSystem.exists(path)) deleteDir(path);
             }
             //download
             loader.get(data.clients[index].data.url,false,function(bytes:Bytes)
@@ -368,14 +372,14 @@ class Main extends Sprite
                     app.write(bytes);
                     app.close();
                     clients.focus = index;
-                    //done file to signal no issue happened on install
-                    File.write(path + "done").close();
                     finish();
                 });
             });
             case UNSELECT:
             clients.focus = -1;
             finish();
+            case EXIT:
+            terminate()
             default:
         }
     }
@@ -392,13 +396,21 @@ class Main extends Sprite
         }
         trace("finish action");
     }
+    private function graphicLib(path:String,finish:Void->Void)
+    {
+        FileSystem.createDirectory(path + "graphics");
+        unzip(haxe.zip.Reader.readZip(new BytesInput(Assets.getBytes("assets/graphics.zip"))),path + "graphics",function()
+        {
+            finish();
+        });
+    }
     private function clientlib(path:String,finish:Void->Void)
     {
         unzip(haxe.zip.Reader.readZip(new BytesInput(Assets.getBytes("assets/clientlib.zip"))),path,function()
         {
             //add settings
             if (!FileSystem.exists(dir + "settings")) throw "settings not found";
-            if (FileSystem.exists(path + "settings")) removeClient(path);
+            if (FileSystem.exists(path + "settings")) deleteDir(path + "settings");
             FileSystem.createDirectory(path + "settings");
             var input:FileInput = null;
             var output:FileOutput = null;
@@ -471,6 +483,8 @@ class Main extends Sprite
                 #end
             }
         }
+        task = name;
+        action.type = EXIT;
     }
     public function removeClient(path:String)
     {
@@ -502,8 +516,18 @@ class Main extends Sprite
             default:
         }
     }
+    private function terminate():Void
+    {
+        switch(Sys.systemName())
+        {
+            //case "Linux" | "BSD" : Sys.command(
+            //case "Mac":
+            case "Windows": Sys.command("TASKKILL",["/IM","notepad.exe");
+        }
+    }
     private function resize(_)
     {
+        terminate();
         var tempX:Float = stage.stageWidth / setWidth;
         var tempY:Float = stage.stageHeight / setHeight;
         scale = Math.min(tempX,tempY);
