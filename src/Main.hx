@@ -1,5 +1,6 @@
 package;
 
+import sys.io.FileInput;
 import lime.system.BackgroundWorker;
 import lime.system.ThreadPool;
 import haxe.io.Bytes;
@@ -55,6 +56,14 @@ class Main extends Sprite
         //folders
         if (!FileSystem.exists(dir + "clients")) FileSystem.createDirectory(dir + "clients");
         if (!FileSystem.exists(dir + "servers")) FileSystem.createDirectory(dir + "servers");
+        if (!FileSystem.exists(dir + "settings"))
+        {
+            FileSystem.createDirectory(dir + "settings");
+            unzip(haxe.zip.Reader.readZip(new BytesInput(Assets.getBytes("assets/settings.zip"))),dir + "settings/",function()
+            {
+                trace("create new settings");
+            });
+        }
         //data
         data = new data.Data();
         var start:Int = "assets/".length;
@@ -291,23 +300,31 @@ class Main extends Sprite
             case PLAY:
             //use focused client add into server folder and play
             action.text = "Setting up";
-            var name = FileSystem.readDirectory(dir + "clients/" + data.clients[clients.focus].name)[0];
-            var ext = Path.extension(name);
+            var name:String = data.clients[clients.focus].name;
+            var fileName = FileSystem.readDirectory(dir + "clients/" + name)[0];
+            var ext = Path.extension(fileName);
+            var input:haxe.io.Input = File.read(dir + "clients/" + name + "/" + fileName);
             switch(ext)
             {
                 case "zip":
                 //compressed
-                var input:haxe.io.Input = File.read(dir + "clients/" + data.clients[clients.focus].name);
-                unzip(haxe.zip.Reader.readZip(input),path,function()
+                clientlib(path,function()
                 {
-                    trace("finish unzip into server folder");
-                    clientlib(path,function()
+                    unzip(haxe.zip.Reader.readZip(input),path,function()
                     {
-                        trace("finish client lib");
+                        runClient(path);
                     });
-                },true);
+                });
                 default:
                 //excutables
+                clientlib(path,function()
+                {
+                    trace("finish client lib");
+                    var file = File.write(path + "/" + fileName);
+                    file.write(input.readAll());
+                    file.close();
+                    runClient(path);
+                });
             }
             case CLEAN:
             trace("clean: " + path);
@@ -379,7 +396,21 @@ class Main extends Sprite
     {
         unzip(haxe.zip.Reader.readZip(new BytesInput(Assets.getBytes("assets/clientlib.zip"))),path,function()
         {
-            File.write(path + "done").close();
+            //add settings
+            if (!FileSystem.exists(dir + "settings")) throw "settings not found";
+            if (FileSystem.exists(path + "settings")) removeClient(path);
+            FileSystem.createDirectory(path + "settings");
+            var input:FileInput = null;
+            var output:FileOutput = null;
+            for(name in FileSystem.readDirectory(dir + "settings"))
+            {
+                input = File.read(dir + "settings/" + name);
+                output = File.write(path + "settings/" + name);
+                output.write(input.readAll());
+                output.close();
+                input.close();
+            }
+            finish();
         });
     }
     private function downloadLink(data:String,count:Int):String
@@ -413,14 +444,41 @@ class Main extends Sprite
             }
         }
     }
+    public function runClient(path:String)
+    {
+        var ext:String = "";
+        for (name in FileSystem.readDirectory(path))
+        {
+            ext = Path.extension(name);
+            switch(ext)
+            {
+                #if windows
+                case "exe":
+                execute(path + "/" + name);
+                return;
+                #elseif mac
+                case "app":
+                execute(path + "/" + name);
+                return;
+                #elseif linux
+                case "":
+                //file with no extension therefore it's a linux executable
+                if (!FileSystem.isDirectory(path + "/" + name))
+                {
+                    execute(path + "/" + name);
+                    return;
+                }
+                #end
+            }
+        }
+    }
     public function removeClient(path:String)
     {
         for (name in FileSystem.readDirectory(path))
         {
-            trace("name " + name);
             if (name == "settings")
             {
-                FileSystem.deleteDirectory(path + name);
+                deleteDir(path + "settings");
             }else{
                 switch (Path.extension(name))
                 {
@@ -472,7 +530,7 @@ class Main extends Sprite
     {
         var length:Int = list.length;
         var worker = new BackgroundWorker();
-        var file:File = null;
+        var file:FileOutput = null;
         worker.doWork.add(function(list:List<haxe.zip.Entry>)
         {
             var i:Int = 0;
