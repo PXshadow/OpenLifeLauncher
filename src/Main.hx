@@ -111,7 +111,22 @@ class Main extends Sprite
         //servers.fill();
         clients = new ListBox("Clients");
         //saved data
-        if (so.data.focus != null) clients.focus = so.data.focus;
+        if (so.data.focus != null && so.data.focus > -1) 
+        {
+            clients.focus = so.data.focus;
+            trace("focus " + clients.focus + " length " + data.clients.length);
+            if (data.clients.length < clients.focus + 1) 
+            {
+                clients.focus = -1;
+                so.data.focus = -1;
+                return;
+            }
+            if (!FileSystem.exists(dir + "clients/" + data.clients[clients.focus].name))
+            {
+                clients.focus = -1;
+                so.data.focus = clients.focus;
+            }
+        }
         clients.y = servers.height + 0;
         for (obj in data.clients) clients.add(obj.name);
         addChild(clients);
@@ -271,6 +286,7 @@ class Main extends Sprite
         serverbrowser.clear();
         update();
     }
+    var si:Int = 0;
     private function clientFunction(i:Int)
     {
         //redraw other
@@ -282,14 +298,15 @@ class Main extends Sprite
             clients.y = servers.y + servers.height;
             //download client
             clients.focus = clients.index;
-            clients.index = -1;
-            //play server
-            action.type = PLAY;
-            actionFunction(null);
-            return;
-        }else{
+            clients.index = clients.focus;
+            si = servers.index;
             servers.index = -1;
+            action.type = SELECT;
+            actionFunction(null);
+            action.type = DONE;
+            return;
         }
+        servers.index = -1;
         //data
         if (clients.focus == i)
         {
@@ -378,6 +395,7 @@ class Main extends Sprite
                 },true);
             });
             case PLAY:
+            trace("client focus " + clients.focus);
             //check if client not focused
             if (clients.focus == -1)
             {
@@ -389,6 +407,7 @@ class Main extends Sprite
             //use focused client add into server folder and play
             action.text = "Setting up";
             var name:String = data.clients[clients.focus].name;
+            trace("name " + name);
             var d = FileSystem.readDirectory(dir + "clients/" + name);
             var fileName = d[0] == "binary.txt" ? d[1] : d[0];
             var ext = Path.extension(fileName);
@@ -443,6 +462,7 @@ class Main extends Sprite
                 finish();
                 return;
             }
+            trace("download select client " + name);
             //download
             loader.get(data.clients[index].data.url,false,function(bytes:Bytes)
             {
@@ -500,8 +520,18 @@ class Main extends Sprite
     }
     private function finish()
     {
+        if (action.type == DONE)
+        {
+            clients.index = -1;
+            servers.index = si;
+            //play server
+            action.type = PLAY;
+            actionFunction(null);
+            return;
+        }
         if (servers.index >= 0)
         {
+            openfl.Lib.application.window.alert(data.servers[servers.index].name + " Downloaded","Complete");
             serverFunction(servers.index);
             return;
         }
@@ -613,10 +643,20 @@ class Main extends Sprite
         File.saveContent(dir + "settings/useCustomServer.ini","1");
         if (account.index > -1)
         {
+            trace("account index " + account.index);
             var data = account.array[account.index];
-            File.saveContent(dir + "settings/email.ini",data.email);
-            File.saveContent(dir + "settings/accountKey.ini",data.key);
-            File.saveContent(dir + "settings/autoLogin.ini","1");
+            var file = File.write(dir + "settings/email.ini",false);
+            file.writeString(data.email);
+            file.close();
+            file = File.write(dir + "settings/accountKey.ini",false);
+            file.writeString(data.key);
+            file.close();
+            file = File.write(dir + "settings/autoLogin.ini");
+            file.writeString("1");
+            file.close();
+            //File.saveContent(dir + "settings/email.ini",data.email);
+            //File.saveContent(dir + "settings/accountKey.ini",data.key);
+            //File.saveContent(dir + "settings/autoLogin.ini","1");
         }else{
             File.saveContent(dir + "settings/autoLogin.ini","0");
         }

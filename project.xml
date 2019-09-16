@@ -10,6 +10,6 @@
 	<!--<haxedef name="HXCPP_STACK_TRACE" if="debug"/>-->
 	<!--<haxedef name="HXCPP_GC_GENERATIONAL"/>-->
 	<!--<haxedef name="HXCPP_GC_BIG_BLOCKS"/>-->
-	<assets path="assets" embed="false"/>
+	<assets path="assets" embed="true"/>
 	<!--<haxeflag name="-dce" value="full" />-->
 </project>

@@ -108,8 +108,20 @@ class AccountBox extends Sprite
     {
         if (login.nameInput.text == "" || login.emailInput.text == "" || login.keyInput.text == "") return;
         var obj:AccountData = {name:login.nameInput.text,email:login.emailInput.text,key:login.keyInput.text};
-        File.saveContent(Main.dir + "accounts/" + obj.name + ".json", Json.stringify(obj));
+        if (!FileSystem.exists(Main.dir + "accounts/" + obj.name + ".json")) index = array.push(obj);
+        try {
+        var file = File.write(Main.dir + "accounts/" + obj.name + ".json",false);
+        file.writeString(Json.stringify(obj));
+        file.close();
+        }catch(e:Dynamic)
+        {
+            trace("error writing " + e);
+        }
+        login.emailInput.text = "";
+        login.nameInput.text = "";
+        login.keyInput.text = "";
         login.visible = false;
+        type = DONE;
     }
     private function signup()
     {
