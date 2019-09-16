@@ -10,7 +10,8 @@ class ServerBrowser extends Sprite
     var status:Text;
     var over:Shape;
     var select:Shape;
-    var index:Int = 0;
+    public var array:Array<data.Reflector> = [];
+    public var index:Int = 0;
     public function new()
     {
         super();
@@ -91,10 +92,13 @@ class ServerBrowser extends Sprite
         over.visible = false;
         select.visible = false;
         mouseEnabled = false;
+        array = [];
+        mouseEnabled = false;
     }
     public function set(array:Array<Reflector>)
     {
         clear();
+        this.array = array;
         mouseEnabled = true;
         for (reflect in array)
         {

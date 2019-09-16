@@ -56,6 +56,12 @@ class ListBox extends Sprite
     {
         graphics.beginFill(index == i ? Style.fill : Style.select);
         graphics.drawRect(0,40 + i * 40,setWidth,40);
+        if (i == focus)
+        {
+            graphics.endFill();
+            graphics.beginFill(0xFFFFFF);
+            graphics.drawCircle(300 - 20,40 + focus * 40 + 20,8);
+        }
         i++;
     }
     private function tab()
@@ -80,14 +86,8 @@ class ListBox extends Sprite
         graphics.clear();
         tab();
         i = 0;
+        graphics.endFill();
         for (j in 0...length)  draw();
-        //focus
-        if (focus > -1)
-        {
-            graphics.endFill();
-            graphics.beginFill(0xFFFFFF);
-            graphics.drawCircle(300 - 20,40 + focus * 40 + 20,8);
-        }
     }
     public function fill()
     {

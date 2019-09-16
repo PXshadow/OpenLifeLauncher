@@ -5,9 +5,9 @@ enum ActionType
     DOWNLOAD;
     PLAY;
     UPDATE;
-    NOCLIENT;
     CLEAN;
-
+    RUNNING;
+    DONE;
     SELECT;
     UNSELECT;
     EXIT;
@@ -33,6 +33,9 @@ class ActionButton extends Button
             case PLAY:
             text = "Play";
             fill(0x388e3c);
+            case DONE:
+            text = "Done";
+            fill(0x388e3c);
             case UPDATE:
             text = "Update";
             fill(0x2196f3);
@@ -42,14 +45,14 @@ class ActionButton extends Button
             case UNSELECT:
             text = "Unselect";
             fill(0x2196f3);
-            case NOCLIENT:
-            text = "No Client";
-            fill(0x2196f3);
             case CLEAN:
             text = "Clean";
             fill(0x2196f3);
             case EXIT:
             text = "Exit";
+            fill(0x808080);
+            case RUNNING:
+            text = "Running";
             fill(0x808080);
         }
         return type;

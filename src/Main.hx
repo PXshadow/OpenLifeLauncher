@@ -1,5 +1,6 @@
 package;
 
+import openfl.net.SharedObject;
 import sys.io.FileInput;
 import lime.system.BackgroundWorker;
 import lime.system.ThreadPool;
@@ -28,8 +29,8 @@ import ui.*;
 class Main extends Sprite
 {
 	public static var dir:String = "";
-    var setWidth:Int = 1200;
-    var setHeight:Int = 800;
+    public static var setWidth:Int = 1200;
+    public static var setHeight:Int = 800;
     var scale:Float = 0;
     var data:data.Data;
     var action:ActionButton;
@@ -39,14 +40,31 @@ class Main extends Sprite
     var clients:ListBox;
     var desc:Text;
     var discord:Button;
+    var signup:Button;
     var serverbrowser:ServerBrowser;
     var loader:Loader = new Loader();
     var timer:Timer;
     var unzipLength:Int = 0;
     var task:String = "";
+    var image:Bitmap;
+    public static var so:SharedObject;
+    var account:AccountBox;
 	public function new()
 	{
 		super();
+        stage.addEventListener(Event.ACTIVATE,function(_)
+        {
+            stage.frameRate = 30;
+        });
+        stage.window.onMinimize.add(function()
+        {
+            stage.frameRate = 5;
+        });
+        /*stage.addEventListener(openfl.events.MouseEvent.CLICK,function(_)
+        {
+            setup();
+        });*/
+        so = SharedObject.getLocal("data");
         //resolve loader
         loader.get("https://github.com/PXshadow/resolve/archive/master.zip",true,function(data:Bytes)
         {
@@ -57,6 +75,7 @@ class Main extends Sprite
         //folders
         if (!FileSystem.exists(dir + "clients")) FileSystem.createDirectory(dir + "clients");
         if (!FileSystem.exists(dir + "servers")) FileSystem.createDirectory(dir + "servers");
+        if (!FileSystem.exists(dir + "accounts")) FileSystem.createDirectory(dir + "accounts");
         if (!FileSystem.exists(dir + "settings"))
         {
             FileSystem.createDirectory(dir + "settings");
@@ -89,13 +108,15 @@ class Main extends Sprite
         for (obj in data.servers) servers.add(obj.name);
         addChild(servers);
         servers.select = serverFunction;
-        servers.fill();
+        //servers.fill();
         clients = new ListBox("Clients");
+        //saved data
+        if (so.data.focus != null) clients.focus = so.data.focus;
         clients.y = servers.height + 0;
         for (obj in data.clients) clients.add(obj.name);
         addChild(clients);
         clients.select = clientFunction;
-        clients.fill();
+        //clients.fill();
         //action button
         action = new ActionButton();
         action.Click = actionFunction;
@@ -113,7 +134,7 @@ class Main extends Sprite
         delete.textfield.y = 4;
         delete.textfield.size = 24;
         delete.textfield.color = Style.text;
-        delete.Click = remove;
+        delete.Click = deleteFunction;
         addChild(delete);
         //main
         desc = new Text("",LEFT,20,0xFFFFFF,setWidth - 300 - 20 * 2);
@@ -130,20 +151,49 @@ class Main extends Sprite
         discord.addChild(new Bitmap(Assets.getBitmapData("assets/discord.png"),PixelSnapping.ALWAYS,true));
         discord.scaleX = 0.3;
         discord.scaleY = 0.3;
-        discord.x = setWidth - discord.width - 20;
         discord.y = desc.height + 10 + 20;
         discord.Click = discordInvite;
         addChild(discord);
+        signup = new Button();
+        signup.visible = false;
+        signup.text = "Signup";
+        signup.textfield.align = CENTER;
+        signup.textfield.width = 200;
+        signup.textfield.y = 4;
+        signup.textfield.size = 24;
+        signup.textfield.color = Style.text;
+        signup.y = discord.y + discord.height + 20;
+        signup.graphics.beginFill(0x800080,1);
+        signup.graphics.drawRoundRect(0,0,200,40,30,30);
+        signup.Click = signupFunction;
+        addChild(signup);
         serverbrowser = new ServerBrowser();
-        serverbrowser.y = desc.y + desc.height + 8;
+        serverbrowser.x = 300 + 35;
+        serverbrowser.y = desc.y + desc.height + 16;
         addChild(serverbrowser);
+        image = new Bitmap(null,openfl.display.PixelSnapping.ALWAYS,true);
+        image.x = 320;
+        image.y = 360;
+        //image.bitmapData = Assets.getBitmapData("assets/images/0.png");
+        //width 240
+        account = new AccountBox();
+        if (so.data.account != null)
+        {
+            account.type = LOGIN;
+        }
+        //account.visible = false;
+        addChild(account);
         //event
         stage.addEventListener(Event.RESIZE,resize);
         resize(null);
-
+        addChild(image);
         timer = new haxe.Timer(1000 * 10);
         timer.run = update;
 	}
+    private function signupFunction(_)
+    {
+        if (servers.index > -1) url(data.servers[servers.index].data.account);
+    }
     private function update()
     {
         //update serverbrowser
@@ -189,41 +239,57 @@ class Main extends Sprite
     }
     private function serverFunction(i:Int)
     {
+        clients.x = 0;
+        clients.y = servers.y + servers.height;
         //redraw other
         clients.index = -1;
         clients.redraw();
         //data
         var obj = data.servers[i];
+        trace("server function name " + obj.name);
         if (FileSystem.exists(dir + "servers/" + obj.name))
         {
             if (!FileSystem.exists(dir + "servers/" + obj.name + "/done"))
             {
+
                 //folder is there but files are still there 
                 action.type = CLEAN;
             }else{
                 //folder
-                if (clients.focus == -1)
-                {
-                    action.type = NOCLIENT;
-                }else{
-                    action.type = PLAY;
-                }
+                action.type = PLAY;
             }
         }else{
+            trace("does not exist");
             //does not exist
             action.type = DOWNLOAD;
         }
         delete.visible = (action.type == DOWNLOAD || action.type == CLEAN ? false : true);
         desc.text = data.servers[i].data.desc;
         discord.visible = true;
+        signup.visible = true;
+        serverbrowser.index = 0;
         serverbrowser.clear();
         update();
     }
     private function clientFunction(i:Int)
     {
         //redraw other
-        servers.index = -1;
         servers.redraw();
+        if (action.type == DONE)
+        {
+            //server is selecting client
+            clients.x = servers.x;
+            clients.y = servers.y + servers.height;
+            //download client
+            clients.focus = clients.index;
+            clients.index = -1;
+            //play server
+            action.type = PLAY;
+            actionFunction(null);
+            return;
+        }else{
+            servers.index = -1;
+        }
         //data
         if (clients.focus == i)
         {
@@ -234,6 +300,7 @@ class Main extends Sprite
         delete.visible = FileSystem.exists(dir + "clients/" + data.clients[i].name);
         desc.text = data.clients[i].data.desc;
         discord.visible = false;
+        signup.visible = false;
         serverbrowser.clear();
     }
     private function discordInvite(_)
@@ -243,7 +310,7 @@ class Main extends Sprite
             url(data.servers[servers.index].data.discord);
         }
     }
-    private function remove(_)
+    private function deleteFunction(_)
     {
         if (servers.index >= 0)
         {
@@ -257,6 +324,8 @@ class Main extends Sprite
         }
         if (clients.index >= 0)
         {
+            //remove focus if deleted client
+            if (clients.index == clients.focus) clients.focus = -1;
             var path:String = dir + "clients/" + data.clients[clients.index].name;
             deleteDir(path);
             FileSystem.deleteDirectory(path);
@@ -309,15 +378,34 @@ class Main extends Sprite
                 },true);
             });
             case PLAY:
+            //check if client not focused
+            if (clients.focus == -1)
+            {
+                clients.x = 560;
+                clients.y = serverbrowser.y;
+                action.type = DONE;
+                return;
+            }
             //use focused client add into server folder and play
             action.text = "Setting up";
             var name:String = data.clients[clients.focus].name;
-            var fileName = FileSystem.readDirectory(dir + "clients/" + name)[0];
+            var d = FileSystem.readDirectory(dir + "clients/" + name);
+            var fileName = d[0] == "binary.txt" ? d[1] : d[0];
             var ext = Path.extension(fileName);
             var input:haxe.io.Input = File.read(dir + "clients/" + name + "/" + fileName);
-            //clean up old client
+            //clean up old client and move settings back
+            try {
             removeClient(path);
+            }catch(e:Dynamic)
+            {
+                trace("e " + e);
+            }
+            //setup settings
+            setup();
             //install new client
+            var binary = File.write(path + "binary.txt");
+            binary.writeString(File.getContent(dir + "clients/" + name + "/binary.txt"));
+            binary.close();
             switch(ext)
             {
                 case "zip":
@@ -346,15 +434,12 @@ class Main extends Sprite
             deleteDir(path);
             FileSystem.deleteDirectory(path);
             finish();
-            case NOCLIENT:
-            openfl.Lib.current.stage.window.alert("No client selected","Info");
-            //client side
             case SELECT:
             if (FileSystem.exists(path))
             {
                 //already installed
                 clients.focus = index;
-                clients.redraw();
+                so.data.focus = clients.focus;
                 finish();
                 return;
             }
@@ -370,27 +455,48 @@ class Main extends Sprite
                 #elseif linux
                 count = data.clients[index].data.linux;
                 #end
-                var link = downloadLink(bytes.toString(),count);
+                var string = bytes.toString();
+                var link = downloadLink(string,count);
+                //get binary
+                var split = string.indexOf('class="muted-link css-truncate" title="') + 39;
+                string = string.substring(string.indexOf("_v",split) + 2,string.indexOf('"',split));
+                trace("version " + string);
+                //download zip from link
                 trace("link " + link);
                 loader.get(link,true,function(bytes:Bytes)
                 {
                     FileSystem.createDirectory(path);
+                    //binary
+                    var binary = File.write(path + "binary.txt");
+                    binary.writeString("v" + string + " built on Mon Jan 1 11:11:11 PST 2019");
+                    binary.close();
+
                     var ext:String = Path.extension(link);
                     //write an executable or a zip
                     var app = File.write(path + name + (ext == "" ? "" : "." + ext));
                     app.write(bytes);
                     app.close();
+                    trace("focus " + index);
                     clients.focus = index;
                     finish();
                 });
             });
             case UNSELECT:
             clients.focus = -1;
+            so.data.focus = -1;
             finish();
             case EXIT:
             terminate();
             default:
         }
+    }
+    private function binary(path:String)
+    {
+        //data binary version
+        var binary = File.write(path + "binary.txt");
+        trace("version " + File.getContent(path + "dataVersionNumber.txt"));
+        binary.writeString("v" + File.getContent(path + "dataVersionNumber.txt") + " built on Mon Jan 1 11:11:11 PST 2019");
+        binary.close();
     }
     private function finish()
     {
@@ -413,6 +519,19 @@ class Main extends Sprite
             finish();
         });
     }
+    private function settingslib(dir:String,path:String)
+    {
+        var input:FileInput = null;
+        var output:FileOutput = null;
+        for(name in FileSystem.readDirectory(dir + "settings"))
+        {
+            input = File.read(dir + "settings/" + name);
+            output = File.write(path + "settings/" + name);
+            output.write(input.readAll());
+            output.close();
+            input.close();
+        }
+    }
     private function clientlib(path:String,finish:Void->Void)
     {
         unzip(haxe.zip.Reader.readZip(new BytesInput(Assets.getBytes("assets/clientlib.zip"))),path,function()
@@ -421,16 +540,7 @@ class Main extends Sprite
             if (!FileSystem.exists(dir + "settings")) throw "settings not found";
             if (FileSystem.exists(path + "settings")) deleteDir(path + "settings");
             FileSystem.createDirectory(path + "settings");
-            var input:FileInput = null;
-            var output:FileOutput = null;
-            for(name in FileSystem.readDirectory(dir + "settings"))
-            {
-                input = File.read(dir + "settings/" + name);
-                output = File.write(path + "settings/" + name);
-                output.write(input.readAll());
-                output.close();
-                input.close();
-            }
+            settingslib(dir,path);
             finish();
         });
     }
@@ -492,8 +602,24 @@ class Main extends Sprite
                 #end
             }
         }
-        task = name;
-        action.type = EXIT;
+    }
+    private function setup()
+    {
+        if (serverbrowser.array.length == 0) return;
+        //settings setup
+        trace("setting up");
+        File.saveContent(dir + "settings/customServerAddress.ini",serverbrowser.array[serverbrowser.index].ip);
+        File.saveContent(dir + "settings/CustomServerPort.ini",Std.string(serverbrowser.array[serverbrowser.index].port));
+        File.saveContent(dir + "settings/useCustomServer.ini","1");
+        if (account.index > -1)
+        {
+            var data = account.array[account.index];
+            File.saveContent(dir + "settings/email.ini",data.email);
+            File.saveContent(dir + "settings/accountKey.ini",data.key);
+            File.saveContent(dir + "settings/autoLogin.ini","1");
+        }else{
+            File.saveContent(dir + "settings/autoLogin.ini","0");
+        }
     }
     public function removeClient(path:String)
     {
@@ -501,11 +627,14 @@ class Main extends Sprite
         {
             if (name == "settings")
             {
+                //move settings back and save to be changed
+                settingslib(path,dir);
+                //delete settings
                 deleteDir(path + "settings");
             }else{
                 switch (Path.extension(name))
                 {
-                    case "dll" | "exe" | "app" | "txt":
+                    case "dll" | "exe" | "app":
                     FileSystem.deleteFile(path + name);
                 }
             }
@@ -526,6 +655,10 @@ class Main extends Sprite
             case "Windows": Sys.command("start", [url]);
             default:
         }
+        task = url;
+        action.type = RUNNING;
+        stage.window.minimized = true;
+        trace("finish run");
     }
     private function terminate()
     {
@@ -554,13 +687,16 @@ class Main extends Sprite
         if (servers != null) servers.x = diff;
         side.height = stage.stageHeight/scale;
         side.x = diff;
+        account.x = diff;
+        account.resize(stage.stageWidth/scale);
+        account.y = stage.stageHeight/scale - 40;
         //action button
-        action.x = -100 + (setWidth + action.width)/2;
-        action.y = stage.stageHeight/scale - 40 - 20;
+        action.x = -60 + (setWidth + action.width)/1.5;
+        action.y = stage.stageHeight/scale - 40 * 2 - 10;
         delete.x = action.x + action.width + 10;
         delete.y = action.y;
-
-        serverbrowser.x = action.x + action.width/2  - 90;
+        discord.x = action.x + 70;
+        signup.x = discord.x;
     }
     private function unzip(list:List<haxe.zip.Entry>,path:String,finish:Void->Void,actionBool:Bool=false)
     {
@@ -607,6 +743,7 @@ class Main extends Sprite
     {
         #if windows
         dir = "";
+        //dir = Path.normalize(lime.system.System.applicationDirectory) + "/";
         #else
         dir = Path.normalize(lime.system.System.applicationDirectory);
         dir = Path.removeTrailingSlashes(dir) + "/";
@@ -615,5 +752,6 @@ class Main extends Sprite
         dir = dir.substring(0,dir.indexOf("/Contents/Resources/"));
         dir = dir.substring(0,dir.lastIndexOf("/") + 1);
         #end
+        trace("dir " + dir);
     }
 }

@@ -8,8 +8,8 @@
 	<haxelib name="openfl" />
 	<!--<haxedef name="HXCPP_STACK_LINE" if="debug"/>-->
 	<!--<haxedef name="HXCPP_STACK_TRACE" if="debug"/>-->
-	<haxedef name="HXCPP_GC_GENERATIONAL"/>
+	<!--<haxedef name="HXCPP_GC_GENERATIONAL"/>-->
 	<!--<haxedef name="HXCPP_GC_BIG_BLOCKS"/>-->
-	<assets path="assets"/>
-	<assets embed="true" if="final"/>
+	<assets path="assets" embed="false"/>
+	<!--<haxeflag name="-dce" value="full" />-->
 </project>
