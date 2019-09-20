@@ -383,14 +383,24 @@ class Main extends Sprite
                     trace("graphics lib");
                     graphicLib(path,function()
                     {
-                        //english text
+                        //english text in dir
                         var language = File.write(path + "us_english_60.txt");
                         language.writeString(Assets.getText("assets/us_english_60.txt"));
                         language.close();
-                        //completion check file
-                        File.write(path + "done").close();
-                        //finish event
-                        finish();
+                        //languages folder
+                        FileSystem.createDirectory(path + "languages");
+                        language = File.write(path + "languages/English.txt");
+                        language.writeString(Assets.getText("assets/English.txt"));
+                        language.close();
+                        //sounds
+                        FileSystem.createDirectory(path + "otherSounds");
+                        unzip(haxe.zip.Reader.readZip(new BytesInput(Assets.getBytes("assets/otherSounds.zip"))),path + "otherSounds/",function()
+                        {
+                            //completion check file
+                            File.write(path + "done").close();
+                            //finish event
+                            finish();
+                        });
                     });
                 },true);
             });
@@ -651,14 +661,14 @@ class Main extends Sprite
             file = File.write(dir + "settings/accountKey.ini",false);
             file.writeString(data.key);
             file.close();
-            file = File.write(dir + "settings/autoLogin.ini");
+            /*file = File.write(dir + "settings/autoLogin.ini");
             file.writeString("1");
-            file.close();
+            file.close();*/
             //File.saveContent(dir + "settings/email.ini",data.email);
             //File.saveContent(dir + "settings/accountKey.ini",data.key);
             //File.saveContent(dir + "settings/autoLogin.ini","1");
         }else{
-            File.saveContent(dir + "settings/autoLogin.ini","0");
+            //File.saveContent(dir + "settings/autoLogin.ini","0");
         }
     }
     public function removeClient(path:String)
