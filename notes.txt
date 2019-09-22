@@ -1,3 +1,9 @@
+add pictures
+toggle windowed
+have download 
+
+
+
 skipFPSMeasure 1
 autoLogin 1
 auto
