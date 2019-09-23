@@ -225,6 +225,7 @@ class Main extends Sprite
         signup.textfield.width = 200;
         signup.textfield.y = 4;
         signup.textfield.size = 24;
+        signup.textfield.height = 30;
         signup.textfield.color = Style.text;
         signup.y = discord.y + discord.height + 20;
         signup.graphics.beginFill(0x800080,1);
