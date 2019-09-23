@@ -7,4 +7,5 @@ typedef Client =
     mac:Int,
     linux:Int,
     desc:String,
+    image:String,
 } 

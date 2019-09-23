@@ -8,4 +8,8 @@ class Data
     {
 
     }
+    public function toString():String
+    {
+        return "clients: " + clients + " servers: " + servers;
+    }
 }

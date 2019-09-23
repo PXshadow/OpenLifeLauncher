@@ -1,3 +1,5 @@
+import openfl.display.BitmapData;
+import haxe.io.Bytes;
 import openfl.Assets;
 import openfl.display.Bitmap;
 import openfl.display.Shape;
@@ -18,7 +20,7 @@ class ListBox extends Sprite
     {
         super();
         this.title = title.toLowerCase();
-        cacheAsBitmap = true;
+        //cacheAsBitmap = true;
         tab();
         //title
         var text = new Text(title,CENTER,24,Style.text,setWidth);
@@ -30,25 +32,25 @@ class ListBox extends Sprite
         addEventListener(MouseEvent.CLICK,click);
         addEventListener(MouseEvent.MOUSE_MOVE,move);
     }
+    public function addIcon(bytes:Bytes)
+    {
+        var bitmap = new Bitmap(BitmapData.fromBytes(bytes));
+        bitmap.width = 20;
+        bitmap.height = 20;
+        bitmap.x = 10;
+        bitmap.y = 40 + length * 40 + (40 - bitmap.width)/2;
+        bitmap.smoothing = true;
+        addChild(bitmap);
+    }
     public function add(name:String)
     {
         //text
         var text = new Text(StringTools.replace(name,"_"," "),LEFT,24,Style.text,setWidth - 40);
+        text.cacheAsBitmap = false;
         text.height = 40 - 4;
         text.y = 40 + length * 40 + 4;
         text.x = 40;
         addChild(text);
-        //icon
-        if (true)
-        {
-            var bitmap = new Bitmap(Assets.getBitmapData("assets/" + title + "/" + name + ".png"));
-            bitmap.smoothing = true;
-            bitmap.width = 20;
-            bitmap.height = 20;
-            bitmap.x = 10;
-            bitmap.y = 40 + length * 40 + (40 - bitmap.width)/2;
-            addChild(bitmap);
-        }
         length++;
         draw();
     }

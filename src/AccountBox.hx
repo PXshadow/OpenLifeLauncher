@@ -129,6 +129,7 @@ class AccountBox extends Sprite
     }
     private function click(_)
     {
+        if (mouseX > 120) return;
         trace("mouseY " + mouseY);
         for (item in list)
         {
@@ -146,7 +147,7 @@ class AccountBox extends Sprite
             {
                 //action
                 login.visible = true;
-                text.text = "Accounts";
+                text.text = "Accounts News";
             }else{
                 //list
                 selector.scaleY = -1;

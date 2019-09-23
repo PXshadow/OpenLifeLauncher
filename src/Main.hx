@@ -7,6 +7,7 @@ import lime.system.ThreadPool;
 import haxe.io.Bytes;
 import lime.app.Future;
 import data.Reflector;
+import data.Project;
 import haxe.Timer;
 import openfl.net.URLRequest;
 import openfl.display.PixelSnapping;
@@ -47,8 +48,11 @@ class Main extends Sprite
     var unzipLength:Int = 0;
     var task:String = "";
     var image:Bitmap;
+    var imageLoad:Bool = false;
     public static var so:SharedObject;
     var account:AccountBox;
+    var news:Button;
+    var link:String;
 	public function new()
 	{
 		super();
@@ -86,26 +90,15 @@ class Main extends Sprite
         }
         //data
         data = new data.Data();
-        var start:Int = "assets/".length;
-        for (path in Assets.list(AssetType.TEXT))
-        {
-            var split:Int = path.indexOf("/",start);
-            //-5 to remove .json
-            var name = path.substring(split + 1,path.length - 5);
-            switch(path.substring(start,split))
-            {
-                case "clients":
-                data.clients.push({name:name,data:Json.parse(Assets.getText(path))});
-                case "servers":
-                data.servers.push({name:name,data:Json.parse(Assets.getText(path))});
-            }
-        }
+        var metadata = Json.parse(Assets.getText("assets/project.json"));
+        link = metadata.link;
+        var project:Project = null;
         //stage
         side = new Bitmap(new BitmapData(300,stage.stageHeight,false,Style.select));
         side.cacheAsBitmapMatrix = new Matrix();
         addChild(side);
+        //side objects
         servers = new ListBox("Servers");
-        for (obj in data.servers) servers.add(obj.name);
         addChild(servers);
         servers.select = serverFunction;
         //servers.fill();
@@ -127,10 +120,64 @@ class Main extends Sprite
                 so.data.focus = clients.focus;
             }
         }
-        clients.y = servers.height + 0;
-        for (obj in data.clients) clients.add(obj.name);
         addChild(clients);
         clients.select = clientFunction;
+        function addData()
+        {
+            if (data.clients.length == project.clients.length && data.servers.length == project.servers.length)
+            {
+                //trace("finish " + data.toString());
+                var i:Int = 0;
+                for (obj in data.servers) 
+                {
+                    loader.get(link + "servers/" + obj.name + ".png",false,function(bytes:Bytes)
+                    {
+                        servers.addIcon(bytes);
+                        servers.add(obj.name);
+                        if (i == data.servers.length - 1) 
+                        {
+                            //finish servers
+                            servers.index = 0;
+                            servers.redraw();
+                            serverFunction(servers.index);
+                            clients.y = servers.height + 0;
+                        }
+                        i++;
+                    });
+                }
+                for (obj in data.clients) 
+                {
+                    loader.get(link + "clients/" + obj.name + ".png",false,function(bytes:Bytes)
+                    {
+                        clients.addIcon(bytes);
+                        trace("name: " + obj.name);
+                        clients.add(obj.name);
+                    });
+                }
+            }
+        }
+
+        loader.get(link + Std.string(metadata.main),false,function(bytes:Bytes)
+        {
+            project = Json.parse(bytes.toString());
+            for (server in project.servers)
+            {
+                loader.get(link + "servers/" + server + ".json",false,function(obj:Bytes)
+                {
+                    data.servers.push({name:server,data:Json.parse(obj.toString())});
+                    addData();
+                });
+            }
+            for (client in project.clients)
+            {
+                loader.get(link + "clients/" + client + ".json",false,function(obj:Bytes)
+                {
+                    data.clients.push({name:client,data:Json.parse(obj.toString())});
+                    addData();
+                });
+            }
+            trace("project " + project);
+        });
         //clients.fill();
         //action button
         action = new ActionButton();
@@ -156,6 +203,7 @@ class Main extends Sprite
         desc.spacing = 20;
         desc.wordWrap = true;
         desc.cacheAsBitmap = false;
+        desc.width = 300;
         desc.height = 326;
         desc.x = 300 + 20;
         desc.y = 10;
@@ -187,8 +235,8 @@ class Main extends Sprite
         serverbrowser.y = desc.y + desc.height + 16;
         addChild(serverbrowser);
         image = new Bitmap(null,openfl.display.PixelSnapping.ALWAYS,true);
-        image.x = 320;
-        image.y = 360;
+        image.x = 640;
+        image.y = 10;
         //image.bitmapData = Assets.getBitmapData("assets/images/0.png");
         //width 240
         account = new AccountBox();
@@ -198,6 +246,21 @@ class Main extends Sprite
         }
         //account.visible = false;
         addChild(account);
+        news = new Button();
+        news.Click = function(_)
+        {
+            trace("news");
+            url("https://arc-century-news.github.io/ace/");
+        }
+        news.text = "News";
+        news.textfield.y = 4;
+        news.textfield.bold = true;
+        news.textfield.size = 24;
+        news.textfield.color = Style.text;
+        news.graphics.beginFill(0,0);
+        news.graphics.drawRect(0,0,news.width,30);
+        news.x = 300;
+        addChild(news);
         //event
         stage.addEventListener(Event.RESIZE,resize);
         resize(null);
@@ -254,7 +317,7 @@ class Main extends Sprite
     }
     private function serverFunction(i:Int)
     {
-        clients.x = 0;
+        clients.x = side.x;
         clients.y = servers.y + servers.height;
         //redraw other
         clients.index = -1;
@@ -285,16 +348,30 @@ class Main extends Sprite
         serverbrowser.index = 0;
         serverbrowser.clear();
         update();
+        //image
+        image.bitmapData = null;
+        if (imageLoad) return;
+        imageLoad = true;
+        trace("image: " + link + "servers/" + data.servers[servers.index].data.image);
+        loader.get(link + "servers/" + data.servers[servers.index].data.image,false,function(bytes:Bytes)
+        {
+            image.bitmapData = BitmapData.fromBytes(bytes);
+            var width = 550;
+            image.height = width * (image.bitmapData.height/image.bitmapData.width);
+            image.width = width;
+            imageLoad = false;
+        });
     }
     var si:Int = 0;
     private function clientFunction(i:Int)
     {
         //redraw other
+        servers.index = -1;
         servers.redraw();
         if (action.type == DONE)
         {
             //server is selecting client
-            clients.x = servers.x;
+            clients.x = side.x;
             clients.y = servers.y + servers.height;
             //download client
             clients.focus = clients.index;
@@ -319,6 +396,19 @@ class Main extends Sprite
         discord.visible = false;
         signup.visible = false;
         serverbrowser.clear();
+        trace("link: " + link + "clients/" + data.clients[clients.index].data.image);
+        //image
+        image.bitmapData = null;
+        if (imageLoad) return;
+        imageLoad = true;
+        loader.get(link + "clients/" + data.clients[clients.index].data.image,false,function(bytes:Bytes)
+        {
+            image.bitmapData = BitmapData.fromBytes(bytes);
+            var width = 550;
+            image.height = width * (image.bitmapData.height/image.bitmapData.width);
+            image.width = width;
+            imageLoad = false;
+        });
     }
     private function discordInvite(_)
     {
@@ -371,13 +461,14 @@ class Main extends Sprite
         {
             //server side
             case DOWNLOAD:
+            stage.window.alert("Launcher will notify you when the download is complete","Launcher background mode");
+            stage.window.minimized = true;
             UnitTest.inital();
             action.text = "Downloading";
             loader.get(data.servers[index].data.data,true,function(data:Bytes)
             {
                 trace("stamp: " + UnitTest.stamp());
                 FileSystem.createDirectory(path);
-                action.text = "unzip";
                 unzip(haxe.zip.Reader.readZip(new BytesInput(data)),path,function()
                 {
                     trace("graphics lib");
@@ -541,6 +632,7 @@ class Main extends Sprite
         }
         if (servers.index >= 0)
         {
+            stage.window.minimized = false;
             openfl.Lib.application.window.alert(data.servers[servers.index].name + " Downloaded","Complete");
             serverFunction(servers.index);
             return;
@@ -730,7 +822,6 @@ class Main extends Sprite
         y = 0;
         scaleX = scale;
         scaleY = scale;
-
         //keep side bar to the side
         var diff:Float = -x * 1/scale;
         if (clients != null) clients.x = diff;
@@ -740,6 +831,7 @@ class Main extends Sprite
         account.x = diff;
         account.resize(stage.stageWidth/scale);
         account.y = stage.stageHeight/scale - 40;
+        news.y = account.y + 0;
         //action button
         action.x = -60 + (setWidth + action.width)/1.5;
         action.y = stage.stageHeight/scale - 40 * 2 - 10;
@@ -781,7 +873,7 @@ class Main extends Sprite
         });
         worker.onProgress.add(function(current:Int)
         {
-            if (actionBool) action.text = "unzip " + Std.string(Std.int((current/length) * 100)) + "%";
+            //if (actionBool) action.text = "unzip " + Std.string(Std.int((current/length) * 100)) + "%";
         });
         worker.onComplete.add(function(_)
         {

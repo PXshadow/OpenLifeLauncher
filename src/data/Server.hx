@@ -7,5 +7,6 @@ typedef Server =
     account:String,
     desc:String,
     tech:String,
-    discord:String
+    discord:String,
+    image:String
 }
