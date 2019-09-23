@@ -42,6 +42,7 @@ class Main extends Sprite
     var desc:Text;
     var discord:Button;
     var signup:Button;
+    var github:Button;
     var serverbrowser:ServerBrowser;
     var loader:Loader = new Loader();
     var timer:Timer;
@@ -214,7 +215,7 @@ class Main extends Sprite
         discord.addChild(new Bitmap(Assets.getBitmapData("assets/discord.png"),PixelSnapping.ALWAYS,true));
         discord.scaleX = 0.3;
         discord.scaleY = 0.3;
-        discord.y = desc.height + 10 + 20;
+        discord.y = desc.height + 10 + 20 + 12;
         discord.Click = discordInvite;
         addChild(discord);
         signup = new Button();
@@ -230,6 +231,19 @@ class Main extends Sprite
         signup.graphics.drawRoundRect(0,0,200,40,30,30);
         signup.Click = signupFunction;
         addChild(signup);
+        github = new Button();
+        github.visible = false;
+        github.text = "Github";
+        github.textfield.align = CENTER;
+        github.textfield.width = 200;
+        github.textfield.y = 4;
+        github.textfield.size = 24;
+        github.textfield.color = Style.text;
+        github.y = signup.y + signup.height + 20;
+        github.graphics.beginFill(0x800080,1);
+        github.graphics.drawRoundRect(0,0,200,40,30,30);
+        github.Click = githubFunction;
+        addChild(github);
         serverbrowser = new ServerBrowser();
         serverbrowser.x = 300 + 35;
         serverbrowser.y = desc.y + desc.height + 16;
@@ -271,6 +285,22 @@ class Main extends Sprite
     private function signupFunction(_)
     {
         if (servers.index > -1) url(data.servers[servers.index].data.account);
+    }
+    private function githubFunction(_)
+    {
+        if (servers.index > -1)
+        {
+            var link = data.servers[servers.index].data.data;
+            var archive = "/archive/";
+            url(link.substring(0,link.indexOf(archive,18)));
+            return;
+        }
+        if (clients.index > -1)
+        {
+            var link = data.clients[clients.index].data.url;
+            var release = "/releases/";
+            url(link.substring(0,link.indexOf(release,18)));
+        }
     }
     private function update()
     {
@@ -345,6 +375,7 @@ class Main extends Sprite
         desc.text = data.servers[i].data.desc;
         discord.visible = true;
         signup.visible = true;
+        github.visible = true;
         serverbrowser.index = 0;
         serverbrowser.clear();
         update();
@@ -395,6 +426,7 @@ class Main extends Sprite
         desc.text = data.clients[i].data.desc;
         discord.visible = false;
         signup.visible = false;
+        github.visible = true;
         serverbrowser.clear();
         trace("link: " + link + "clients/" + data.clients[clients.index].data.image);
         //image
@@ -838,7 +870,8 @@ class Main extends Sprite
         delete.x = action.x + action.width + 10;
         delete.y = action.y;
         discord.x = action.x + 70;
-        signup.x = discord.x;
+        signup.x = discord.x + 20;
+        github.x = signup.x;
     }
     private function unzip(list:List<haxe.zip.Entry>,path:String,finish:Void->Void,actionBool:Bool=false)
     {
