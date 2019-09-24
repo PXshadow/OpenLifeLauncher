@@ -43,6 +43,7 @@ class Main extends Sprite
     var discord:Button;
     var signup:Button;
     var github:Button;
+    var folder:Button;
     var serverbrowser:ServerBrowser;
     var loader:Loader = new Loader();
     var timer:Timer;
@@ -123,9 +124,11 @@ class Main extends Sprite
         }
         addChild(clients);
         clients.select = clientFunction;
+        var length:Int = 0;
         function addData()
         {
-            if (data.clients.length == project.clients.length && data.servers.length == project.servers.length)
+            trace("count: " + Std.string(data.clients.length + data.servers.length) + "length: " + length);
+            if (length == data.clients.length + data.servers.length)
             {
                 //trace("finish " + data.toString());
                 var i:Int = 0;
@@ -161,6 +164,7 @@ class Main extends Sprite
         loader.get(link + Std.string(metadata.main),false,function(bytes:Bytes)
         {
             project = Json.parse(bytes.toString());
+            length = project.clients.length + project.servers.length;
             for (server in project.servers)
             {
                 loader.get(link + "servers/" + server + ".json",false,function(obj:Bytes)
@@ -169,11 +173,22 @@ class Main extends Sprite
                     addData();
                 });
             }
+            var dataClient:data.Client;
             for (client in project.clients)
             {
                 loader.get(link + "clients/" + client + ".json",false,function(obj:Bytes)
                 {
-                    data.clients.push({name:client,data:Json.parse(obj.toString())});
+                    dataClient = Json.parse(obj.toString());
+                    #if mac
+                    trace("mac: " + dataClient.mac);
+                    if (dataClient.mac == -1) 
+                    {
+                        length--;
+                        addData();
+                        return;
+                    }
+                    #end
+                    data.clients.push({name:client,data:dataClient});
                     addData();
                 });
             }
@@ -239,12 +254,26 @@ class Main extends Sprite
         github.textfield.width = 200;
         github.textfield.y = 4;
         github.textfield.size = 24;
+        github.textfield.height = 30;
         github.textfield.color = Style.text;
         github.y = signup.y + signup.height + 20;
         github.graphics.beginFill(0x800080,1);
         github.graphics.drawRoundRect(0,0,200,40,30,30);
         github.Click = githubFunction;
         addChild(github);
+        folder = new Button();
+        folder.visible = false;
+        folder.text = "Folder";
+        folder.textfield.align = CENTER;
+        folder.textfield.width = 200;
+        folder.textfield.y = 4;
+        folder.textfield.size = 24;
+        folder.textfield.color = Style.text;
+        folder.y = github.y + github.height + 20;
+        folder.graphics.beginFill(0x808080,1);
+        folder.graphics.drawRoundRect(0,0,200,40,30,30);
+        folder.Click = folderFunction;
+        addChild(folder);
         serverbrowser = new ServerBrowser();
         serverbrowser.x = 300 + 35;
         serverbrowser.y = desc.y + desc.height + 16;
@@ -301,6 +330,18 @@ class Main extends Sprite
             var link = data.clients[clients.index].data.url;
             var release = "/releases/";
             url(link.substring(0,link.indexOf(release,18)));
+        }
+    }
+    private function folderFunction(_)
+    {
+        if (servers.index > -1)
+        {
+            lime.system.System.openFile(dir + "servers/" + data.servers[servers.index].name);
+            return;
+        }
+        if (clients.index > -1)
+        {
+            lime.system.System.openFile(dir + "clients/" + data.clients[clients.index].name);
         }
     }
     private function update()
@@ -377,6 +418,7 @@ class Main extends Sprite
         discord.visible = true;
         signup.visible = true;
         github.visible = true;
+        folder.visible = true;
         serverbrowser.index = 0;
         serverbrowser.clear();
         update();
@@ -412,9 +454,10 @@ class Main extends Sprite
             servers.index = -1;
             action.type = SELECT;
             actionFunction(null);
-            action.type = PLAY;
-            servers.index = si;
-            actionFunction(null);
+            action.type = DONE;
+            //servers.index = si;
+            /*servers.index = si;
+            actionFunction(null);*/
             return;
         }
         servers.index = -1;
@@ -430,6 +473,7 @@ class Main extends Sprite
         discord.visible = false;
         signup.visible = false;
         github.visible = true;
+        folder.visible = true;
         serverbrowser.clear();
         trace("link: " + link + "clients/" + data.clients[clients.index].data.image);
         //image
@@ -457,7 +501,7 @@ class Main extends Sprite
         if (servers.index >= 0)
         {
             trace("delete dir");
-            var path:String = dir + "servers/" + data.servers[servers.index].name;
+            var path:String = dir + "servers/" + data.servers[servers.index].name + "/";
             deleteDir(path);
             FileSystem.deleteDirectory(path);
             serverFunction(servers.index);
@@ -468,7 +512,7 @@ class Main extends Sprite
         {
             //remove focus if deleted client
             if (clients.index == clients.focus) clients.focus = -1;
-            var path:String = dir + "clients/" + data.clients[clients.index].name;
+            var path:String = dir + "clients/" + data.clients[clients.index].name + "/";
             deleteDir(path);
             FileSystem.deleteDirectory(path);
             clientFunction(clients.index);
@@ -567,9 +611,15 @@ class Main extends Sprite
                 //compressed
                 clientlib(path,function()
                 {
+                    trace("unzip client " + path);
                     unzip(haxe.zip.Reader.readZip(input),path,function()
                     {
                         trace("run client");
+                        /*#if mac
+                        FileSystem.createDirectory("OneLife");
+                        copyDir(path + "Contents/",path + "OneLife/Contents/");
+                        deleteDir(path + "Contents/");
+                        #end*/
                         runClient(path);
                     });
                 });
@@ -658,6 +708,7 @@ class Main extends Sprite
     {
         if (action.type == DONE)
         {
+            trace("done finish");
             clients.index = -1;
             servers.index = si;
             //play server
@@ -732,12 +783,28 @@ class Main extends Sprite
         {
             for (name in FileSystem.readDirectory(path))
             {
-                if (FileSystem.isDirectory(path + "/" + name))
+                if (FileSystem.isDirectory(path + name))
                 {
-                    deleteDir(path + "/" + name);
-                    FileSystem.deleteDirectory(path + "/" + name);
+                    deleteDir(path + name + "/");
+                    FileSystem.deleteDirectory(path + name);
                 }else{
-                    FileSystem.deleteFile(path + "/" + name);
+                    FileSystem.deleteFile(path + name);
+                }
+            }
+        }
+    }
+    private function copyDir(path:String,newpath:String)
+    {
+        if (FileSystem.exists(path) && FileSystem.isDirectory(path))
+        {
+            for (name in FileSystem.readDirectory(path))
+            {
+                if (FileSystem.isDirectory(path + name))
+                {
+                    copyDir(path + name + "/", newpath + name + "/");
+                    FileSystem.createDirectory(newpath + name);
+                }else{
+                    File.copy(path + name,newpath + name);
                 }
             }
         }
@@ -807,7 +874,7 @@ class Main extends Sprite
                 //move settings back and save to be changed
                 settingslib(path,dir);
                 //delete settings
-                deleteDir(path + "settings");
+                deleteDir(path + "settings/");
             }else{
                 switch (Path.extension(name))
                 {
@@ -833,7 +900,7 @@ class Main extends Sprite
             default:
         }
         task = url;
-        action.type = RUNNING;
+        //action.type = RUNNING;
         stage.window.minimized = true;
         trace("finish run");
     }
@@ -875,6 +942,7 @@ class Main extends Sprite
         discord.x = action.x + 70;
         signup.x = discord.x + 20;
         github.x = signup.x;
+        folder.x = github.x;
     }
     private function unzip(list:List<haxe.zip.Entry>,path:String,finish:Void->Void,actionBool:Bool=false)
     {
@@ -883,23 +951,29 @@ class Main extends Sprite
         var file:FileOutput = null;
         worker.doWork.add(function(list:List<haxe.zip.Entry>)
         {
-            var i:Int = 0;
+            //var i:Int = 0;
             for (item in list)
             {
-                i++;
-                item.fileName = item.fileName.substring(item.fileName.indexOf("/") + 1,item.fileName.length);
+                //i++;
+                //item.fileName = item.fileName.substring(item.fileName.indexOf("/") + 1,item.fileName.length);
+                trace("filename " + item.fileName);
                 if(Path.extension(item.fileName) == "")
                 {
                     //folder
                     FileSystem.createDirectory(path + item.fileName);
-                    worker.sendProgress(i);
+                    //worker.sendProgress(i);
                 }else{
                     if (FileSystem.isDirectory(path + Path.directory(item.fileName)))
                     {
-                        file = File.write(path + item.fileName);
-                        file.write(haxe.zip.Reader.unzip(item));
-                        file.close();
-                        file = null;
+                        if (item.compressed)
+                        {
+                            file = File.write(path + item.fileName);
+                            file.write(haxe.zip.Reader.unzip(item));
+                            file.close();
+                            file = null;
+                        }else{
+                            FileSystem.createDirectory(path + item.fileName);
+                        }
                     }else{
                         trace("Can not find directory " + Path.directory(item.fileName));
                     }
