@@ -605,23 +605,33 @@ class Main extends Sprite
             var binary = File.write(path + "binary.txt");
             binary.writeString(File.getContent(dir + "clients/" + name + "/binary.txt"));
             binary.close();
+            /*#if mac
+            clientlib(path,function()
+            {
+                File.copy(dir + "clients/" + name + "/" + fileName,path + fileName);
+                haxe.zip.Reader.readZip(File.read(path + fileName));
+                FileSystem.deleteFile(path + fileName);
+            });
+            return;
+            #end*/
             switch(ext)
             {
                 case "zip":
                 //compressed
                 clientlib(path,function()
                 {
-                    trace("unzip client " + path);
+                    #if mac
+                    //unzip with terminal
+                    Sys.command("unzip",[dir + "clients/" + name + "/" + fileName,"-d",path]);
+                    runClient(path);
+                    return;
+                    #end
                     unzip(haxe.zip.Reader.readZip(input),path,function()
                     {
                         trace("run client");
-                        /*#if mac
-                        FileSystem.createDirectory("OneLife");
-                        copyDir(path + "Contents/",path + "OneLife/Contents/");
-                        deleteDir(path + "Contents/");
-                        #end*/
                         runClient(path);
                     });
+                    input.close();
                 });
                 default:
                 //excutables
@@ -632,6 +642,7 @@ class Main extends Sprite
                     file.write(input.readAll());
                     file.close();
                     runClient(path);
+                    input.close();
                 });
             }
             case CLEAN:
@@ -955,8 +966,8 @@ class Main extends Sprite
             for (item in list)
             {
                 //i++;
-                //item.fileName = item.fileName.substring(item.fileName.indexOf("/") + 1,item.fileName.length);
-                trace("filename " + item.fileName);
+                item.fileName = item.fileName.substring(item.fileName.indexOf("/") + 1,item.fileName.length);
+                //trace("filename " + item.fileName + " c " + item.compressed + " d " + item.dataSize);
                 if(Path.extension(item.fileName) == "")
                 {
                     //folder
@@ -965,15 +976,10 @@ class Main extends Sprite
                 }else{
                     if (FileSystem.isDirectory(path + Path.directory(item.fileName)))
                     {
-                        if (item.compressed)
-                        {
-                            file = File.write(path + item.fileName);
-                            file.write(haxe.zip.Reader.unzip(item));
-                            file.close();
-                            file = null;
-                        }else{
-                            FileSystem.createDirectory(path + item.fileName);
-                        }
+                        file = File.write(path + item.fileName);
+                        file.write(haxe.zip.Reader.unzip(item));
+                        file.close();
+                        file = null;
                     }else{
                         trace("Can not find directory " + Path.directory(item.fileName));
                     }
