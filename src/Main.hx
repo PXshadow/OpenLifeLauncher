@@ -412,7 +412,9 @@ class Main extends Sprite
             servers.index = -1;
             action.type = SELECT;
             actionFunction(null);
-            action.type = DONE;
+            action.type = PLAY;
+            servers.index = si;
+            actionFunction(null);
             return;
         }
         servers.index = -1;
