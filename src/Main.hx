@@ -389,8 +389,6 @@ class Main extends Sprite
     }
     private function serverFunction(i:Int)
     {
-        clients.x = side.x;
-        clients.y = servers.y + servers.height;
         //redraw other
         clients.index = -1;
         clients.redraw();
@@ -406,7 +404,13 @@ class Main extends Sprite
                 action.type = CLEAN;
             }else{
                 //folder
-                action.type = PLAY;
+                if (clients.focus > -1)
+                {
+                    action.type = PLAY;
+                }else{
+                    //client does not exist
+                    action.type = NOCLIENT;
+                }
             }
         }else{
             trace("does not exist");
@@ -436,30 +440,11 @@ class Main extends Sprite
             imageLoad = false;
         });
     }
-    var si:Int = 0;
     private function clientFunction(i:Int)
     {
         //redraw other
         servers.index = -1;
         servers.redraw();
-        if (action.type == DONE)
-        {
-            //server is selecting client
-            clients.x = side.x;
-            clients.y = servers.y + servers.height;
-            //download client
-            clients.focus = clients.index;
-            clients.index = clients.focus;
-            si = servers.index;
-            servers.index = -1;
-            action.type = SELECT;
-            actionFunction(null);
-            action.type = DONE;
-            //servers.index = si;
-            /*servers.index = si;
-            actionFunction(null);*/
-            return;
-        }
         servers.index = -1;
         //data
         if (clients.focus == i)
@@ -532,6 +517,7 @@ class Main extends Sprite
         }else{
             index = clients.index;
             fill = "clients/";
+            trace("index " + index + " client data " + data.clients);
             name = data.clients[index].name;
         }
         var path:String = dir + fill + name + "/"; 
@@ -574,14 +560,17 @@ class Main extends Sprite
                     });
                 },true);
             });
+            case NOCLIENT:
+            //go to first client
+            clients.index = 0;
+            clients.redraw();
+            clients.select(clients.index);
             case PLAY:
             trace("client focus " + clients.focus);
             //check if client not focused
             if (clients.focus == -1)
             {
-                clients.x = 560;
-                clients.y = serverbrowser.y;
-                action.type = DONE;
+                
                 return;
             }
             //use focused client add into server folder and play
@@ -621,8 +610,10 @@ class Main extends Sprite
                 clientlib(path,function()
                 {
                     #if mac
+                    input.close();
                     //unzip with terminal
-                    Sys.command("unzip",[dir + "clients/" + name + "/" + fileName,"-d",path]);
+                    Sys.command("unzip",["-o",dir + "clients/" + name + "/" + fileName,"-d",path]);
+                    Sys.sleep(0.05);
                     runClient(path);
                     return;
                     #end
@@ -717,16 +708,6 @@ class Main extends Sprite
     }
     private function finish()
     {
-        if (action.type == DONE)
-        {
-            trace("done finish");
-            clients.index = -1;
-            servers.index = si;
-            //play server
-            action.type = PLAY;
-            actionFunction(null);
-            return;
-        }
         if (servers.index >= 0)
         {
             stage.window.minimized = false;

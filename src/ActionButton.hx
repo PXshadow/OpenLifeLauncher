@@ -11,6 +11,7 @@ enum ActionType
     SELECT;
     UNSELECT;
     EXIT;
+    NOCLIENT;
 }
 class ActionButton extends Button
 {
@@ -53,6 +54,9 @@ class ActionButton extends Button
             fill(0x808080);
             case RUNNING:
             text = "Running";
+            fill(0x808080);
+            case NOCLIENT:
+            text = "No Client";
             fill(0x808080);
         }
         return type;
